@@ -1,35 +1,5 @@
-# Dependencies
-node_modules/
-
-# Builds
-dist/
-dist-ssr/
-build/
-*.local
-.vite/
-
-# Env / secrets (keep *.example and mode files that are non-secret)
-.env
-vision-api/.env
-**/.env.local
-
-# Logs & OS
-logs/
-*.log
-npm-debug.log*
-.DS_Store
-Thumbs.db
-
-# Editors
-.vscode/*
-!.vscode/extensions.json
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Cursor / agent
-.cursor/
-agent-transcripts/
+# This repository tracks only vision-app/
+/*
+!/.gitignore
+!/vision-app/
+!/vision-app/**
