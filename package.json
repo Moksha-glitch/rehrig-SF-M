@@ -1,0 +1,19 @@
+{
+  "name": "rehrig-sf-migration",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev:demo",
+    "dev:demo": "npm run dev:demo --prefix vision-app",
+    "dev:api": "concurrently -n api,web -c teal,magenta \"npm run dev --prefix vision-api\" \"npm run dev:api --prefix vision-app\"",
+    "dev:api-server": "npm run dev --prefix vision-api",
+    "dev:api-web": "npm run dev:api --prefix vision-app",
+    "build": "npm run build:demo --prefix vision-app",
+    "build:demo": "npm run build:demo --prefix vision-app",
+    "build:api": "npm run build:api --prefix vision-app",
+    "start:api": "npm start --prefix vision-api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
