@@ -1,5 +1,6 @@
-# This repository tracks only vision-app/
+# This repository tracks only vision-app/ (+ Vercel config)
 /*
 !/.gitignore
+!/vercel.json
 !/vision-app/
 !/vision-app/**
