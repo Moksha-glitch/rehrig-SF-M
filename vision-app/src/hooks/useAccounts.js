@@ -2,6 +2,7 @@ export {
   useAccounts,
   useAccount,
   useCreateAccount,
+  useUpdateAccount,
   useUsers,
   useSegments,
   useProducts,

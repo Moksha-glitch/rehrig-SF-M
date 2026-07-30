@@ -5,6 +5,7 @@ export {
   useDeleteRecord,
   useContacts,
   useCreateContact,
+  useUpdateContact,
   useRoutes,
   useCreateRoute,
   useBulkImport,

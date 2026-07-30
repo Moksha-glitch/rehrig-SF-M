@@ -42,6 +42,19 @@ function reducer(state, action) {
           ? state.drafts.filter((d) => d.id !== action.fromDraftId)
           : state.drafts,
       };
+    case 'UPDATE_ACCOUNT':
+      return {
+        ...state,
+        accounts: state.accounts.map((account) =>
+          account.id === action.id
+            ? {
+                ...account,
+                ...action.changes,
+                lastModifiedBy: action.modifiedBy || account.lastModifiedBy,
+              }
+            : account
+        ),
+      };
     case 'SAVE_DRAFT': {
       const draft = action.draft;
       const exists = state.drafts.some((d) => d.id === draft.id);
@@ -102,6 +115,24 @@ function reducer(state, action) {
       };
     case 'ADD_CONTACT':
       return { ...state, contacts: [action.contact, ...state.contacts] };
+    case 'UPDATE_CONTACT':
+      return {
+        ...state,
+        contacts: state.contacts.map((contact) => {
+          if (contact.id !== action.id) return contact;
+          const next = { ...contact, ...action.changes };
+          next.name =
+            next.name ||
+            `${next.firstName || ''} ${next.lastName || ''}`.trim() ||
+            contact.name;
+          if (action.changes.role && !action.changes.roleTitle) next.roleTitle = action.changes.role;
+          if (action.changes.portal != null) {
+            next.isUserCreated = !!action.changes.portal;
+            next.isUserActive = !!action.changes.portal;
+          }
+          return next;
+        }),
+      };
     case 'ADD_ROUTE':
       return { ...state, routes: [action.route, ...state.routes] };
     case 'TOGGLE_NOTIF_RULE':
@@ -184,6 +215,16 @@ export function DemoAppStoreProvider({ children }) {
     (account, fromDraftId = null) => dispatch({ type: 'ADD_ACCOUNT', account, fromDraftId }),
     []
   );
+  const updateAccount = useCallback(
+    (id, changes) =>
+      dispatch({
+        type: 'UPDATE_ACCOUNT',
+        id,
+        changes,
+        modifiedBy: `${state.currentUser?.name || 'Vision user'}, ${new Date().toLocaleString()}`,
+      }),
+    [state.currentUser?.name]
+  );
   const saveDraft = useCallback((draft) => dispatch({ type: 'SAVE_DRAFT', draft }), []);
   const deleteDraft = useCallback((id) => dispatch({ type: 'DELETE_DRAFT', id }), []);
   const toast = useCallback((message, severity = 'success', options = {}) => {
@@ -233,13 +274,27 @@ export function DemoAppStoreProvider({ children }) {
     []
   );
   const addContact = useCallback((contact) => {
+    const firstName = (contact.firstName || '').trim();
+    const lastName = (contact.lastName || '').trim();
+    const portal = !!contact.portal;
     const next = {
       ...contact,
       id: contact.id || `con-${Date.now().toString(36)}`,
-      name: contact.name || `${contact.firstName || ''} ${contact.lastName || ''}`.trim(),
+      firstName,
+      lastName,
+      name: contact.name || `${firstName} ${lastName}`.trim(),
+      email: (contact.email || '').trim(),
+      roleTitle: contact.roleTitle || contact.role || '',
+      title: contact.title || contact.roleTitle || contact.role || '',
+      isUserCreated: contact.isUserCreated ?? portal,
+      isUserActive: contact.isUserActive ?? portal,
+      segment: contact.segment || '',
     };
     dispatch({ type: 'ADD_CONTACT', contact: next });
     return next;
+  }, []);
+  const updateContact = useCallback((id, changes) => {
+    dispatch({ type: 'UPDATE_CONTACT', id, changes });
   }, []);
   const addRoute = useCallback((route) => {
     const next = { ...route, id: route.id || `rt-${Date.now().toString(36)}` };
@@ -393,6 +448,7 @@ export function DemoAppStoreProvider({ children }) {
     setTheme,
     navigate,
     addAccount,
+    updateAccount,
     saveDraft,
     deleteDraft,
     toast,
@@ -407,6 +463,7 @@ export function DemoAppStoreProvider({ children }) {
     updateRecord: updateOperationalRecord,
     deleteRecord: deleteOperationalRecord,
     addContact,
+    updateContact,
     addRoute,
     selectAccounts,
     selectContacts,

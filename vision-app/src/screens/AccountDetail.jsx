@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import {
   Badge,
@@ -10,11 +10,18 @@ import {
   Page,
   Panel,
   Button,
+  Dialog,
+  Field,
+  TextInput,
+  Select,
+  Checkbox,
 } from '../components/UI.jsx';
 import { useStore } from '../state/AppStore.jsx';
-import { useAccount } from '../hooks/useAccounts.js';
+import { useAccount, useUpdateAccount } from '../hooks/useAccounts.js';
+import { useCreateContact, useUpdateContact } from '../hooks/useRecords.js';
 import { useNotificationConfig } from '../hooks/useConfig.js';
 import { getErrorMessage } from '../lib/errors.js';
+import { PICKLISTS } from '../data/picklists.js';
 
 const TABS = [
   { key: 'details', label: 'Details' },
@@ -61,8 +68,9 @@ function val(v) {
 const SEG_BADGE = { Top: 'sky', 'Market Area': 'cyan', District: 'green', Division: 'amber' };
 
 export default function AccountDetail({ accountId, tab }) {
-  const { state, navigate, canTab, toast } = useStore();
+  const { state, navigate, canTab, canCreateAccounts, toast } = useStore();
   const [followed, setFollowed] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const detailQuery = useAccount(accountId);
   const account = detailQuery.data?.data;
   if (detailQuery.isLoading) {
@@ -107,23 +115,39 @@ export default function AccountDetail({ accountId, tab }) {
               {account.inactive && <StatusDot color="slate" label="Inactive" />}
             </div>
             <p className="mt-2.5 text-sm text-ink-muted">
-              {account.industry} · <span className="font-medium text-brand">{account.owner}</span>
+              {account.industry} · <span className="font-medium text-brand">{account.ownerName || account.owner}</span>
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {canCreateAccounts && (
+              <Button variant="primary" onClick={() => setEditOpen(true)}>
+                <Icon name="edit" size={15} /> Edit provider
+              </Button>
+            )}
             <Button variant="secondary" onClick={() => { setFollowed((v) => !v); toast?.(followed ? 'Account unfollowed' : 'Account followed'); }}>
               <Icon name="bookmark" size={15} /> {followed ? 'Following' : 'Follow'}
             </Button>
             <Button variant="secondary" onClick={() => setTab('contacts')}>
               <Icon name="users" size={15} /> Contacts
             </Button>
-            <Button variant="primary" onClick={() => setTab('routes')}>
+            <Button variant="secondary" onClick={() => setTab('routes')}>
               View routes <Icon name="chevronRight" size={14} />
             </Button>
           </div>
         </div>
         <div className="hairline-rule mt-7 animate-rule-draw" />
       </header>
+
+      {editOpen && (
+        <EditProviderDialog
+          account={account}
+          onClose={() => setEditOpen(false)}
+          onSaved={() => {
+            setEditOpen(false);
+            detailQuery.refetch?.();
+          }}
+        />
+      )}
 
       <div role="tablist" aria-label="Account sections" className="mb-6 flex gap-0 overflow-x-auto border-b border-line bg-surface/60 scroll-thin">
         {visibleTabs.map((t) => (
@@ -144,7 +168,14 @@ export default function AccountDetail({ accountId, tab }) {
       </div>
 
       {activeTab === 'details' && <DetailsTab account={account} />}
-      {activeTab === 'contacts' && <ContactsTab contacts={contacts} />}
+      {activeTab === 'contacts' && (
+        <ContactsTab
+          accountId={account.id}
+          contacts={contacts}
+          canEdit={canCreateAccounts}
+          onChanged={() => detailQuery.refetch?.()}
+        />
+      )}
       {activeTab === 'customers' && <CustomersTab account={account} customers={customers} />}
       {activeTab === 'products' && <ProductsTab products={products} />}
       {activeTab === 'segments' && <SegmentsTab segments={segments} />}
@@ -164,12 +195,15 @@ export default function AccountDetail({ accountId, tab }) {
 }
 
 function DetailsTab({ account }) {
-  const n = account.notif;
+  const n = account.notif || {};
+  const serviceTypes = Array.isArray(account.serviceTypes)
+    ? account.serviceTypes.join(', ')
+    : account.serviceTypes || '';
   return (
     <div className="space-y-4">
       <Section title="Account Information">
         <Row label="Account Name">{account.name}</Row>
-        <Row label="Account Owner">{account.ownerName}</Row>
+        <Row label="Account Owner">{val(account.ownerName)}</Row>
         <Row label="Type">{val(account.type)}</Row>
         <Row label="Website">{val(account.website)}</Row>
         <Row label="Phone">{val(account.phone)}</Row>
@@ -181,7 +215,7 @@ function DetailsTab({ account }) {
         <Row label="Employees">{val(account.employees)}</Row>
         <Row label="JDEdwards Id">{val(account.jdEdwardsId)}</Row>
         <Row label="Number Of Weeks">{val(account.numberOfWeeks)}</Row>
-        <Row label="Service Types">{account.serviceTypes.join(', ')}</Row>
+        <Row label="Service Types">{val(serviceTypes)}</Row>
         <Row label="InActive">{val(account.inactive)}</Row>
         <Row label="Track Observations">{val(account.trackObservations)}</Row>
         <Row label="Track Safety Events">{val(account.trackSafetyEvents)}</Row>
@@ -221,19 +255,18 @@ function DetailsTab({ account }) {
       <Section title="Address Information">
         <div className="grid grid-cols-1 gap-6 py-3 sm:grid-cols-2">
           {['billing', 'shipping'].map((k) => {
-            const a = account[k];
+            const a = account[k] || {};
             return (
               <div key={k}>
                 <div className="type-overline mb-2">
                   {k === 'billing' ? 'Billing Address' : 'Shipping Address'}
                 </div>
                 <div className="text-sm leading-relaxed text-brand">
-                  {a.street}
+                  {a.street || '—'}
                   <br />
-                  {a.city}
-                  {a.state ? `, ${a.state}` : ''} {a.zip}
+                  {[a.city, a.state].filter(Boolean).join(', ')} {a.zip || ''}
                   <br />
-                  {a.country}
+                  {a.country || ''}
                 </div>
                 <div
                   className="mt-3 flex h-24 items-center justify-center border border-line bg-[linear-gradient(to_right,#e6ebe8_1px,transparent_1px),linear-gradient(to_bottom,#e6ebe8_1px,transparent_1px)]"
@@ -248,24 +281,223 @@ function DetailsTab({ account }) {
       </Section>
 
       <Section title="System Information">
-        <Row label="Created By">{account.createdBy}</Row>
-        <Row label="Last Modified By">{account.lastModifiedBy}</Row>
+        <Row label="Created By">{val(account.createdBy)}</Row>
+        <Row label="Last Modified By">{val(account.lastModifiedBy)}</Row>
       </Section>
     </div>
   );
 }
 
-function ContactsTab({ contacts }) {
+function EditProviderDialog({ account, onClose, onSaved }) {
+  const { toast } = useStore();
+  const updateAccount = useUpdateAccount();
+  const [form, setForm] = useState(() => ({
+    name: account.name || '',
+    uid: account.uid || '',
+    industry: account.industry || '',
+    phone: account.phone || '',
+    website: account.website || '',
+    supportEmail: account.supportEmail || '',
+    description: account.description || '',
+    type: account.type || 'Customer',
+    employees: account.employees ?? 0,
+    inactive: !!account.inactive,
+    serviceTypes: Array.isArray(account.serviceTypes)
+      ? account.serviceTypes.join(', ')
+      : account.serviceTypes || '',
+    billingStreet: account.billing?.street || '',
+    billingCity: account.billing?.city || '',
+    billingState: account.billing?.state || '',
+    billingZip: account.billing?.zip || '',
+    billingCountry: account.billing?.country || '',
+  }));
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const set = (patch) => setForm((prev) => ({ ...prev, ...patch }));
+
+  const save = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      setError('Account name is required.');
+      return;
+    }
+    if (!form.uid.trim()) {
+      setError('Service Provider UID is required.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await updateAccount.mutateAsync({
+        id: account.id,
+        changes: {
+          name: form.name.trim(),
+          uid: form.uid.trim(),
+          industry: form.industry.trim(),
+          phone: form.phone.trim(),
+          website: form.website.trim(),
+          supportEmail: form.supportEmail.trim(),
+          description: form.description.trim(),
+          type: form.type,
+          employees: Number(form.employees) || 0,
+          inactive: !!form.inactive,
+          serviceTypes: form.serviceTypes
+            .split(',')
+            .map((v) => v.trim())
+            .filter(Boolean),
+          billing: {
+            ...(account.billing || {}),
+            street: form.billingStreet.trim(),
+            city: form.billingCity.trim(),
+            state: form.billingState.trim(),
+            zip: form.billingZip.trim(),
+            country: form.billingCountry.trim(),
+          },
+        },
+      });
+      toast('Service provider updated');
+      onSaved?.();
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not save provider changes.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog onClose={onClose} title="Edit service provider" description={account.name} wide>
+      <form onSubmit={save} className="space-y-4 overflow-y-auto px-6 py-5 scroll-thin">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Account name" required>
+            <TextInput value={form.name} onChange={(e) => set({ name: e.target.value })} />
+          </Field>
+          <Field label="Service Provider UID" required>
+            <TextInput value={form.uid} onChange={(e) => set({ uid: e.target.value })} />
+          </Field>
+          <Field label="Industry">
+            <Select
+              options={PICKLISTS.industry || ['Municipal', 'Commercial', 'Industrial']}
+              value={form.industry}
+              onChange={(e) => set({ industry: e.target.value })}
+            />
+          </Field>
+          <Field label="Type">
+            <Select
+              options={PICKLISTS.accountType || ['Customer', 'Partner']}
+              value={form.type}
+              onChange={(e) => set({ type: e.target.value })}
+            />
+          </Field>
+          <Field label="Phone">
+            <TextInput value={form.phone} onChange={(e) => set({ phone: e.target.value })} />
+          </Field>
+          <Field label="Website">
+            <TextInput value={form.website} onChange={(e) => set({ website: e.target.value })} />
+          </Field>
+          <Field label="Support email">
+            <TextInput
+              type="email"
+              value={form.supportEmail}
+              onChange={(e) => set({ supportEmail: e.target.value })}
+            />
+          </Field>
+          <Field label="Employees">
+            <TextInput
+              type="number"
+              min="0"
+              value={form.employees}
+              onChange={(e) => set({ employees: e.target.value })}
+            />
+          </Field>
+          <Field label="Service types" span2 hint="Comma-separated, e.g. Residential, Commercial">
+            <TextInput
+              value={form.serviceTypes}
+              onChange={(e) => set({ serviceTypes: e.target.value })}
+            />
+          </Field>
+          <Field label="Description" span2>
+            <TextInput
+              value={form.description}
+              onChange={(e) => set({ description: e.target.value })}
+            />
+          </Field>
+          <Field label="Billing street" span2>
+            <TextInput
+              value={form.billingStreet}
+              onChange={(e) => set({ billingStreet: e.target.value })}
+            />
+          </Field>
+          <Field label="City">
+            <TextInput
+              value={form.billingCity}
+              onChange={(e) => set({ billingCity: e.target.value })}
+            />
+          </Field>
+          <Field label="State / province">
+            <TextInput
+              value={form.billingState}
+              onChange={(e) => set({ billingState: e.target.value })}
+            />
+          </Field>
+          <Field label="Postal code">
+            <TextInput
+              value={form.billingZip}
+              onChange={(e) => set({ billingZip: e.target.value })}
+            />
+          </Field>
+          <Field label="Country">
+            <TextInput
+              value={form.billingCountry}
+              onChange={(e) => set({ billingCountry: e.target.value })}
+            />
+          </Field>
+        </div>
+        <Checkbox
+          label="Mark inactive"
+          checked={form.inactive}
+          onChange={(e) => set({ inactive: e.target.checked })}
+        />
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2 border-t border-line pt-4">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" disabled={busy}>
+            {busy ? 'Saving…' : 'Save changes'}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+function ContactsTab({ accountId, contacts, canEdit, onChanged }) {
+  const [editing, setEditing] = useState(null);
+  const [creating, setCreating] = useState(false);
+
   return (
     <Panel>
-      <Table columns={['Name', 'Title', 'Email', 'Role', 'Segment', 'Portal Access']}>
+      <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
+        <p className="text-sm text-ink-muted">{contacts.length} contact{contacts.length === 1 ? '' : 's'}</p>
+        {canEdit && (
+          <Button variant="secondary" className="!px-2.5 !py-1.5 text-xs" onClick={() => setCreating(true)}>
+            <Icon name="plus" size={14} /> Add contact
+          </Button>
+        )}
+      </div>
+      <Table columns={['Name', 'Title', 'Email', 'Role', 'Segment', 'Portal Access', '']}>
         {contacts.map((c) => (
           <tr key={c.id} className="interactive hover:bg-elevated/70">
             <td className="px-4 py-3 font-medium text-ink">{c.name}</td>
-            <td className="px-4 py-3 text-ink-muted">{c.title}</td>
-            <td className="px-4 py-3 text-ink-muted">{c.email}</td>
-            <td className="px-4 py-3 text-ink-muted">{c.roleTitle}</td>
-            <td className="px-4 py-3 text-ink-muted">{c.segment}</td>
+            <td className="px-4 py-3 text-ink-muted">{c.title || '—'}</td>
+            <td className="px-4 py-3 text-ink-muted">{c.email || '—'}</td>
+            <td className="px-4 py-3 text-ink-muted">{c.roleTitle || c.role || '—'}</td>
+            <td className="px-4 py-3 text-ink-muted">{c.segment || '—'}</td>
             <td className="px-4 py-3">
               {c.isUserCreated && c.isUserActive ? (
                 <Badge color="green">Portal User</Badge>
@@ -273,17 +505,169 @@ function ContactsTab({ contacts }) {
                 <Badge color="slate">Not enrolled</Badge>
               )}
             </td>
+            <td className="px-4 py-3 text-right">
+              {canEdit && (
+                <button
+                  type="button"
+                  className="link-brand text-xs font-medium"
+                  onClick={() => setEditing(c)}
+                >
+                  Edit
+                </button>
+              )}
+            </td>
           </tr>
         ))}
         {contacts.length === 0 && (
           <tr>
-            <td colSpan={6} className="px-4 py-8 text-center text-sm text-ink-faint">
+            <td colSpan={7} className="px-4 py-8 text-center text-sm text-ink-faint">
               No contacts yet.
             </td>
           </tr>
         )}
       </Table>
+      {(editing || creating) && (
+        <ContactEditorDialog
+          accountId={accountId}
+          contact={editing}
+          onClose={() => {
+            setEditing(null);
+            setCreating(false);
+          }}
+          onSaved={() => {
+            setEditing(null);
+            setCreating(false);
+            onChanged?.();
+          }}
+        />
+      )}
     </Panel>
+  );
+}
+
+function ContactEditorDialog({ accountId, contact, onClose, onSaved }) {
+  const { toast } = useStore();
+  const createContact = useCreateContact();
+  const updateContact = useUpdateContact();
+  const isNew = !contact;
+  const [form, setForm] = useState(() => ({
+    firstName: contact?.firstName || '',
+    lastName: contact?.lastName || '',
+    email: contact?.email || '',
+    title: contact?.title || '',
+    role: contact?.roleTitle || contact?.role || PICKLISTS.wizardRole[0],
+    segment: contact?.segment || '',
+    portal: !!(contact?.isUserCreated && contact?.isUserActive) || !!contact?.portal,
+  }));
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setForm({
+      firstName: contact?.firstName || '',
+      lastName: contact?.lastName || '',
+      email: contact?.email || '',
+      title: contact?.title || '',
+      role: contact?.roleTitle || contact?.role || PICKLISTS.wizardRole[0],
+      segment: contact?.segment || '',
+      portal: !!(contact?.isUserCreated && contact?.isUserActive) || !!contact?.portal,
+    });
+  }, [contact]);
+
+  const set = (patch) => setForm((prev) => ({ ...prev, ...patch }));
+
+  const save = async (e) => {
+    e.preventDefault();
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
+      setError('First name, last name, and email are required.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    const changes = {
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      email: form.email.trim(),
+      title: form.title.trim() || form.role,
+      role: form.role,
+      roleTitle: form.role,
+      segment: form.segment.trim(),
+      portal: form.portal,
+      isUserCreated: form.portal,
+      isUserActive: form.portal,
+      name: `${form.firstName.trim()} ${form.lastName.trim()}`,
+    };
+    try {
+      if (isNew) {
+        await createContact.mutateAsync({ ...changes, accountId });
+        toast('Contact added');
+      } else {
+        await updateContact.mutateAsync({ id: contact.id, changes });
+        toast('Contact updated');
+      }
+      onSaved?.();
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not save contact.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog
+      onClose={onClose}
+      title={isNew ? 'Add contact' : 'Edit contact'}
+      description="Contact details for this service provider"
+    >
+      <form onSubmit={save} className="space-y-4 overflow-y-auto px-6 py-5 scroll-thin">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="First name" required>
+            <TextInput value={form.firstName} onChange={(e) => set({ firstName: e.target.value })} />
+          </Field>
+          <Field label="Last name" required>
+            <TextInput value={form.lastName} onChange={(e) => set({ lastName: e.target.value })} />
+          </Field>
+          <Field label="Email" required span2>
+            <TextInput
+              type="email"
+              value={form.email}
+              onChange={(e) => set({ email: e.target.value })}
+            />
+          </Field>
+          <Field label="Title">
+            <TextInput value={form.title} onChange={(e) => set({ title: e.target.value })} />
+          </Field>
+          <Field label="Role">
+            <Select
+              options={PICKLISTS.wizardRole}
+              value={form.role}
+              onChange={(e) => set({ role: e.target.value })}
+            />
+          </Field>
+          <Field label="Segment" span2>
+            <TextInput value={form.segment} onChange={(e) => set({ segment: e.target.value })} />
+          </Field>
+        </div>
+        <Checkbox
+          label="Enable as portal user"
+          checked={form.portal}
+          onChange={(e) => set({ portal: e.target.checked })}
+        />
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2 border-t border-line pt-4">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" disabled={busy}>
+            {busy ? 'Saving…' : isNew ? 'Add contact' : 'Save contact'}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 

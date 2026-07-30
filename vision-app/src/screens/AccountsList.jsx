@@ -94,7 +94,7 @@ export default function AccountsList({ onOnboard }) {
           </select>
           {(q || status !== 'All') && <button className="link-brand text-xs" onClick={() => { setQ(''); setStatus('All'); }}>Clear filters</button>}
         </Toolbar>
-        <Table columns={['#', 'Account Name', 'Industry', 'Phone', 'Owner', 'Residents', 'Status']}>
+        <Table columns={['#', 'Account Name', 'Industry', 'Phone', 'Owner', 'Residents', 'Status', '']}>
           {providerRows.map((a, i) => (
             <tr key={a.id} className="interactive hover:bg-elevated/70">
               <td className="mono px-4 py-3 text-ink-faint tabular-nums">{i + 1}</td>
@@ -120,11 +120,22 @@ export default function AccountsList({ onOnboard }) {
                   <StatusDot color="emerald" label="Active" />
                 )}
               </td>
+              <td className="px-4 py-3 text-right">
+                {canCreateAccounts && (
+                  <button
+                    type="button"
+                    className="link-brand text-xs font-medium"
+                    onClick={() => navigate('accountDetail', { accountId: a.id, tab: 'details' })}
+                  >
+                    Edit
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
           {providerRows.length === 0 && (
             <tr>
-              <td colSpan={7} className="px-4 py-8 text-center text-sm text-ink-faint">
+              <td colSpan={8} className="px-4 py-8 text-center text-sm text-ink-faint">
                 {q || status !== 'All' ? 'No service providers match these filters.' : 'No service providers are available in your scope.'}
               </td>
             </tr>

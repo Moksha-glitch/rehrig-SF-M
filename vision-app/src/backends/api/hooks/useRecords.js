@@ -52,6 +52,17 @@ export function useCreateContact() {
   });
 }
 
+export function useUpdateContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, changes }) => recordsService.updateContact(id, changes),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contacts'] });
+      qc.invalidateQueries({ queryKey: ['accounts'] });
+    },
+  });
+}
+
 export function useRoutes(accountId) {
   const { isAuthenticated } = useAuth();
   return useQuery({

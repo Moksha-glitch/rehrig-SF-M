@@ -42,6 +42,14 @@ export function useCreateContact() {
   return demoMutation(async (contact) => store.addContact(contact));
 }
 
+export function useUpdateContact() {
+  const store = useStore();
+  return demoMutation(async ({ id, changes }) => {
+    store.updateContact(id, changes);
+    return { id, ...changes };
+  });
+}
+
 export function useRoutes(accountId) {
   const store = useStore();
   return demoQuery(store.selectRoutes(accountId));

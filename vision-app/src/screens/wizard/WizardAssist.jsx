@@ -492,6 +492,7 @@ export function WizardChatbot({
   missingFields,
   messages,
   onSend,
+  onClose,
   busy,
   focusedKey = null,
   variant = 'rail',
@@ -544,13 +545,26 @@ export function WizardChatbot({
                 : 'Choose a field to fill'}
           </p>
         </div>
-        <span
-          className={`mono shrink-0 rounded-control px-2 py-1 text-[11px] font-semibold tabular-nums ${
-            complete ? 'bg-success-soft text-success' : 'bg-elevated text-ink-soft'
-          }`}
-        >
-          {complete ? 'Done' : `${doneCount}/${total}`}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            className={`mono rounded-control px-2 py-1 text-[11px] font-semibold tabular-nums ${
+              complete ? 'bg-success-soft text-success' : 'bg-elevated text-ink-soft'
+            }`}
+          >
+            {complete ? 'Done' : `${doneCount}/${total}`}
+          </span>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-control p-1.5 text-ink-faint interactive hover:bg-elevated hover:text-ink"
+              aria-label="Close assistant and edit form"
+              title="Edit form manually"
+            >
+              <Icon name="x" size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Transcript — primary surface */}

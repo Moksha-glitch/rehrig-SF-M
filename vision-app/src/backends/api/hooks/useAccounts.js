@@ -28,6 +28,17 @@ export function useCreateAccount() {
   });
 }
 
+export function useUpdateAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, changes }) => accountsService.update(id, changes),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['accounts'] });
+      qc.invalidateQueries({ queryKey: ['accounts', vars.id] });
+    },
+  });
+}
+
 export function useUsers() {
   const { isAuthenticated, user } = useAuth();
   return useQuery({

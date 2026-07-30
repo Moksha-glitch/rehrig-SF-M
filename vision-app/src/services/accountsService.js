@@ -10,6 +10,9 @@ export const accountsService = {
   create(account) {
     return apiClient.post('/accounts', account).then((r) => r.data.data);
   },
+  update(id, changes) {
+    return apiClient.patch(`/accounts/${id}`, changes).then((r) => r.data.data);
+  },
   users() {
     return apiClient.get('/users').then((r) => r.data.data);
   },

@@ -205,21 +205,24 @@ export function Field({
 }) {
   const generatedId = useId();
   const controlId = id || `field-${generatedId.replace(/:/g, '')}`;
+  const childArray = React.Children.toArray(children);
+  const inputChild = childArray.find(React.isValidElement) || null;
   const resolvedId =
-    (React.isValidElement(children) && children.props.id) || controlId;
+    (React.isValidElement(inputChild) && inputChild.props.id) || controlId;
   const errorId = `${resolvedId}-error`;
   const hintId = `${resolvedId}-hint`;
-  const control = React.isValidElement(children)
-    ? React.cloneElement(children, {
-        id: resolvedId,
-        'aria-invalid': error ? true : children.props['aria-invalid'],
-        'aria-describedby':
-          [children.props['aria-describedby'], hint ? hintId : '', error ? errorId : '']
-            .filter(Boolean)
-            .join(' ') || undefined,
-        required: required || children.props.required,
-      })
-    : children;
+  const control = childArray.map((child) => {
+    if (!React.isValidElement(child) || child !== inputChild) return child;
+    return React.cloneElement(child, {
+      id: resolvedId,
+      'aria-invalid': error ? true : child.props['aria-invalid'],
+      'aria-describedby':
+        [child.props['aria-describedby'], hint ? hintId : '', error ? errorId : '']
+          .filter(Boolean)
+          .join(' ') || undefined,
+      required: required || child.props.required,
+    });
+  });
   return (
     <div className={`min-w-0 ${span2 ? 'sm:col-span-2' : ''} ${className}`}>
       {label && (

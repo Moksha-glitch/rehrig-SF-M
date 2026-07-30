@@ -31,6 +31,14 @@ export function useCreateAccount() {
   });
 }
 
+export function useUpdateAccount() {
+  const store = useStore();
+  return demoMutation(async ({ id, changes }) => {
+    store.updateAccount(id, changes);
+    return { id, ...changes };
+  });
+}
+
 export function useUsers() {
   return demoQuery(USERS);
 }

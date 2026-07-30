@@ -104,7 +104,7 @@ function validateWizard(f) {
   if (f.enableAutoHotTicket && (!Number.isInteger(Number(f.autoHotTicketDays)) || Number(f.autoHotTicketDays) < 1)) {
     errors.autoHotTicketDays = 'Enter a whole number of at least 1.';
   }
-  if (!Number.isInteger(Number(f.notif?.messageLimit)) || Number(f.notif.messageLimit) < 1) {
+  if (!Number.isInteger(Number(f.notif?.messageLimit)) || Number(f.notif?.messageLimit) < 1) {
     errors.messageLimit = 'Enter a whole number of at least 1.';
   }
   ['billing', ...(f.sameAsBilling ? [] : ['shipping'])].forEach((kind) => {
@@ -246,7 +246,8 @@ export default function Wizard({ onClose, draftId = null }) {
   const validationErrors = useMemo(() => validateWizard(f), [f]);
   const isValid = Object.keys(validationErrors).length === 0;
   const missingKeys = useMemo(() => new Set(missingFields.map((x) => x.key)), [missingFields]);
-  const showChat = phase === 'steps' && (chatOpen || (fromContract && missingFields.length > 0 && step === 0));
+  // chatOpen alone controls visibility — never force-cover the form after contract extract
+  const showChat = phase === 'steps' && chatOpen && step === 0;
 
   const pushMessage = useCallback((role, text, options = []) => {
     msgId.current += 1;
@@ -317,6 +318,9 @@ export default function Wizard({ onClose, draftId = null }) {
   const startManual = () => {
     setFromContract(false);
     setChatOpen(false);
+    setChatBusy(false);
+    setChatFocusKey(null);
+    setChatError('');
     setMessages([]);
     setPhase('steps');
     setStep(0);
@@ -752,22 +756,33 @@ export default function Wizard({ onClose, draftId = null }) {
               </div>
 
               {showChat && (
-                <div className="absolute inset-0 z-20 bg-surface md:static md:z-auto">
-                <WizardChatbot
-                  variant="rail"
-                  missingFields={missingFields}
-                  focusedKey={chatFocusKey}
-                  messages={messages}
-                  onSend={handleChatSend}
-                  totalRequired={WIZARD_CHAT_FIELDS.filter((f) => f.required).length}
-                  busy={chatBusy}
-                />
-                {chatError && (
-                  <div className="flex items-center justify-between gap-3 border-t border-line p-3 text-xs text-danger" role="alert">
-                    <span>{chatError}</span>
-                    <button type="button" className="font-semibold underline" onClick={() => handleChatSend(lastChatAnswer.current)}>Retry</button>
+                <div className="absolute inset-0 z-20 flex flex-col bg-surface md:static md:z-auto md:w-auto">
+                  <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 md:hidden">
+                    <p className="text-sm font-medium text-ink">AI assistant</p>
+                    <button
+                      type="button"
+                      className="rounded-control border border-line px-2.5 py-1.5 text-xs font-semibold text-ink interactive hover:bg-elevated"
+                      onClick={() => setChatOpen(false)}
+                    >
+                      Fill form manually
+                    </button>
                   </div>
-                )}
+                  <WizardChatbot
+                    variant="rail"
+                    missingFields={missingFields}
+                    focusedKey={chatFocusKey}
+                    messages={messages}
+                    onSend={handleChatSend}
+                    onClose={() => setChatOpen(false)}
+                    totalRequired={WIZARD_CHAT_FIELDS.filter((f) => f.required).length}
+                    busy={chatBusy}
+                  />
+                  {chatError && (
+                    <div className="flex items-center justify-between gap-3 border-t border-line p-3 text-xs text-danger" role="alert">
+                      <span>{chatError}</span>
+                      <button type="button" className="font-semibold underline" onClick={() => handleChatSend(lastChatAnswer.current)}>Retry</button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

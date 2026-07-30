@@ -21,6 +21,9 @@ export const recordsService = {
   createContact(contact) {
     return apiClient.post('/contacts', contact).then((r) => r.data.data);
   },
+  updateContact(id, changes) {
+    return apiClient.patch(`/contacts/${id}`, changes).then((r) => r.data.data);
+  },
   routes(accountId) {
     return apiClient
       .get('/routes', { params: accountId ? { accountId } : undefined })
