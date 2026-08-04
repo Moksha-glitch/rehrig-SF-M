@@ -20,19 +20,19 @@ import {
   getMissingWizardFields,
   extractContractFile,
   mockParseWizardChat,
-  WIZARD_CHAT_FIELDS,
 } from './WizardAssist.jsx';
-
-const STEPS = [
-  { title: 'Account Information' },
-  { title: 'Service Types & Modules' },
-  { title: 'Hardware & Tracking' },
-  { title: 'Billing & Shipping Address' },
-  { title: 'Service Provider Products' },
-  { title: 'Collection Routes' },
-  { title: 'Contacts & Portal Users' },
-  { title: 'Review & Activate' },
-];
+import {
+  STEPS,
+  isStepComplete,
+  getStepStatuses,
+  nextRequiredIncompleteStep,
+  pendingIssues,
+  applyWizardFieldUpdate,
+  completeNoteForStep,
+  countRequiredChatFields,
+  stepForErrorKey,
+  requiredErrors,
+} from './wizardSteps.js';
 
 const emptyAddress = { country: 'United States', street: '', city: '', state: '', zip: '' };
 const emptyRoute = () => ({ routeNumber: '', collectionType: 'Trash', days: [false, false, false, false, false, false, false], frequency: 'Weekly' });
@@ -164,9 +164,13 @@ export default function Wizard({ onClose, draftId = null }) {
   const lastChatAnswer = useRef('');
   const mounted = useRef(true);
   const msgId = useRef(0);
+  const stepCompleteSnap = useRef(null);
+  const prevStepForChat = useRef(null);
+  const skipAutoNav = useRef(false);
 
   const [step, setStep] = useState(existingDraft?.step ?? 0);
   const [visited, setVisited] = useState(existingDraft?.visited || { 0: true });
+  const [focusFieldKey, setFocusFieldKey] = useState(null);
 
   const [f, setF] = useState(() => {
     if (existingDraft?.form) {
@@ -242,12 +246,19 @@ export default function Wizard({ onClose, draftId = null }) {
   };
   const setNotif = (patch) => setF((prev) => ({ ...prev, notif: { ...prev.notif, ...patch } }));
 
-  const missingFields = useMemo(() => getMissingWizardFields(f), [f]);
   const validationErrors = useMemo(() => validateWizard(f), [f]);
-  const isValid = Object.keys(validationErrors).length === 0;
+  const blockingErrors = useMemo(() => requiredErrors(validationErrors), [validationErrors]);
+  const isValid = Object.keys(blockingErrors).length === 0;
+  const stepStatuses = useMemo(() => getStepStatuses(validationErrors), [validationErrors]);
+  const stepComplete = isStepComplete(validationErrors, step);
+  const missingFields = useMemo(
+    () => getMissingWizardFields(f, validationErrors, step),
+    [f, validationErrors, step]
+  );
   const missingKeys = useMemo(() => new Set(missingFields.map((x) => x.key)), [missingFields]);
-  // chatOpen alone controls visibility — never force-cover the form after contract extract
-  const showChat = phase === 'steps' && chatOpen && step === 0;
+  const reviewIssues = useMemo(() => pendingIssues(validationErrors), [validationErrors]);
+  const sectionNote = completeNoteForStep(step, stepComplete);
+  const showChat = phase === 'steps' && chatOpen;
 
   const pushMessage = useCallback((role, text, options = []) => {
     msgId.current += 1;
@@ -256,33 +267,107 @@ export default function Wizard({ onClose, draftId = null }) {
 
   const handleChatUpdate = useCallback((field, value) => {
     if (!field) return;
-    setF((prev) => ({ ...prev, [field]: value }));
+    setF((prev) => {
+      const next = applyWizardFieldUpdate(prev, field, value);
+      if (next.sameAsBilling && (field.startsWith('billing.') || field === 'sameAsBilling')) {
+        next.shipping = { ...next.billing };
+      }
+      return next;
+    });
   }, []);
 
-  const canNext = useMemo(() => {
-    if (step === 0) return !['accountName', 'uid', 'phone', 'website', 'supportEmail', 'employees'].some((key) => validationErrors[key]);
-    if (step === 1) return !['serviceTypes', 'autoHotTicketDays', 'messageLimit'].some((key) => validationErrors[key]);
-    return true;
-  }, [step, validationErrors]);
+  const canNext = useMemo(
+    () => isStepComplete(validationErrors, step),
+    [step, validationErrors]
+  );
+
+  const jumpToStep = useCallback((i, fieldKey = null) => {
+    skipAutoNav.current = true;
+    setStep(i);
+    setVisited((v) => ({ ...v, [i]: true }));
+    setFocusFieldKey(fieldKey);
+    setShowErrors(true);
+  }, []);
 
   const goto = (i) => {
+    // Sequential navigation + already-visited steps; Review jump uses jumpToStep directly
     if (visited[i] || i <= step) {
-      setStep(i);
-      setVisited((v) => ({ ...v, [i]: true }));
+      jumpToStep(i);
     }
   };
   const next = () => {
     setShowErrors(true);
     if (step < 7 && canNext) {
+      skipAutoNav.current = true;
       const n = step + 1;
       setStep(n);
       setVisited((v) => ({ ...v, [n]: true }));
-      if (n > 0) setChatOpen(false);
     }
   };
   const back = () => {
-    if (step > 0) setStep(step - 1);
+    if (step > 0) {
+      skipAutoNav.current = true;
+      setStep(step - 1);
+    }
   };
+
+  // Auto-advance to the next required incomplete step once the current required step is complete
+  useEffect(() => {
+    if (phase !== 'steps') return;
+    const complete = isStepComplete(validationErrors, step);
+    if (stepCompleteSnap.current == null || stepCompleteSnap.current.step !== step) {
+      stepCompleteSnap.current = { step, complete };
+      return;
+    }
+    if (skipAutoNav.current) {
+      skipAutoNav.current = false;
+      stepCompleteSnap.current = { step, complete };
+      return;
+    }
+    const wasComplete = stepCompleteSnap.current.complete;
+    stepCompleteSnap.current = { step, complete };
+    if (!wasComplete && complete && STEPS[step]?.required && step < 7) {
+      const n = nextRequiredIncompleteStep(validationErrors, step);
+      if (n != null && n !== step) {
+        setStep(n);
+        setVisited((v) => ({ ...v, [n]: true }));
+      }
+    }
+  }, [validationErrors, step, phase]);
+
+  // Refresh assistant context when the step changes while the panel is open
+  useEffect(() => {
+    if (phase !== 'steps') return;
+    if (prevStepForChat.current === step) return;
+    const changed = prevStepForChat.current != null;
+    prevStepForChat.current = step;
+    if (!changed || !chatOpen) return;
+    setMessages([]);
+    setChatError('');
+    const fields = getMissingWizardFields(f, validationErrors, step);
+    const note = completeNoteForStep(step, isStepComplete(validationErrors, step));
+    if (note) {
+      setChatFocusKey(null);
+      pushMessage('assistant', note);
+    } else if (fields[0]) {
+      setChatFocusKey(fields[0].key);
+      pushMessage('assistant', fields[0].question, fields.map((x) => x.label));
+    }
+  }, [step, phase, chatOpen, f, validationErrors, pushMessage]);
+
+  // Scroll / focus a field after jumping from Review
+  useEffect(() => {
+    if (!focusFieldKey || phase !== 'steps') return;
+    const id = `wizard-field-${focusFieldKey.replace(/\./g, '-')}`;
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById(id) || document.querySelector(`[data-wizard-field="${focusFieldKey}"]`);
+      el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      const input = el?.querySelector?.('input, textarea, select, button') || el;
+      if (input && typeof input.focus === 'function') input.focus();
+      setFocusFieldKey(null);
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [focusFieldKey, step, phase]);
 
   const toggleServiceType = (key) =>
     set({
@@ -325,6 +410,8 @@ export default function Wizard({ onClose, draftId = null }) {
     setPhase('steps');
     setStep(0);
     setVisited({ 0: true });
+    prevStepForChat.current = 0;
+    stepCompleteSnap.current = null;
   };
 
   const selectContractFile = (file) => {
@@ -361,39 +448,46 @@ export default function Wizard({ onClose, draftId = null }) {
     try {
     const extracted = await extractContractFile(file);
     if (!mounted.current || run !== extractionRun.current) return;
-    setF((prev) => ({
-      ...prev,
-      accountName: extracted.accountName,
-      uid: extracted.uid,
-      phone: extracted.phone,
-      website: extracted.website,
-      supportEmail: extracted.supportEmail,
-      industry: extracted.industry,
-      type: extracted.type,
-      description: extracted.description,
-      employees: extracted.employees,
-      serviceTypes: extracted.serviceTypes || [],
-      modules: extracted.modules || '',
-      billing: { ...prev.billing, ...extracted.billing },
-      shipping: { ...prev.shipping, ...extracted.billing },
-      sameAsBilling: true,
-    }));
+    let mergedForm = null;
+    setF((prev) => {
+      mergedForm = {
+        ...prev,
+        accountName: extracted.accountName,
+        uid: extracted.uid,
+        phone: extracted.phone,
+        website: extracted.website,
+        supportEmail: extracted.supportEmail,
+        industry: extracted.industry,
+        type: extracted.type,
+        description: extracted.description,
+        employees: extracted.employees,
+        serviceTypes: extracted.serviceTypes || [],
+        modules: extracted.modules || '',
+        billing: { ...prev.billing, ...extracted.billing },
+        shipping: { ...prev.shipping, ...extracted.billing },
+        sameAsBilling: true,
+      };
+      return mergedForm;
+    });
     setPhase('steps');
     setStep(0);
     setVisited({ 0: true });
     setChatOpen(true);
+    prevStepForChat.current = 0;
+    stepCompleteSnap.current = null;
 
-    const still = getMissingWizardFields(extracted);
+    const errs = validateWizard(mergedForm);
+    const still = getMissingWizardFields(mergedForm, errs, 0);
     if (still.length) {
       setChatFocusKey(still[0].key);
       pushMessage(
         'assistant',
         `Extracted from **${file.name}**. ${still[0].question}`,
-        still.map((f) => f.label)
+        still.map((x) => x.label)
       );
     } else {
       setChatFocusKey(null);
-      pushMessage('assistant', 'Extraction complete. Review Step 1, then click Next.');
+      pushMessage('assistant', completeNoteForStep(0, true) || 'Extraction complete. This section looks good.');
     }
     } catch (error) {
       if (!mounted.current || run !== extractionRun.current) return;
@@ -453,14 +547,8 @@ export default function Wizard({ onClose, draftId = null }) {
   const activate = async () => {
     setShowErrors(true);
     if (!isValid) {
-      const firstKey = Object.keys(validationErrors)[0];
-      const firstStep = firstKey === 'serviceTypes' || firstKey === 'autoHotTicketDays' || firstKey === 'messageLimit' ? 1
-        : firstKey.startsWith('billing') || firstKey.startsWith('shipping') ? 3
-        : firstKey.startsWith('products') ? 4
-        : firstKey.startsWith('routes') ? 5
-        : firstKey.startsWith('contacts') ? 6 : 0;
-      setStep(firstStep);
-      setVisited((v) => ({ ...v, [firstStep]: true }));
+      const firstKey = Object.keys(blockingErrors)[0];
+      jumpToStep(stepForErrorKey(firstKey), firstKey);
       return;
     }
     const selectedProducts = Object.entries(f.products).filter(([, v]) => v.selected);
@@ -585,9 +673,28 @@ export default function Wizard({ onClose, draftId = null }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {phase === 'steps' && step === 0 && (
+            {phase === 'steps' && (
               <button
-                onClick={() => setChatOpen((o) => !o)}
+                onClick={() => {
+                  if (chatOpen) {
+                    setChatOpen(false);
+                    return;
+                  }
+                  setChatOpen(true);
+                  setMessages([]);
+                  setChatError('');
+                  if (sectionNote) {
+                    setChatFocusKey(null);
+                    pushMessage('assistant', sectionNote);
+                  } else if (missingFields[0]) {
+                    setChatFocusKey(missingFields[0].key);
+                    pushMessage(
+                      'assistant',
+                      missingFields[0].question,
+                      missingFields.map((x) => x.label)
+                    );
+                  }
+                }}
                 className={`inline-flex items-center gap-1.5 rounded-control border px-2.5 py-1.5 text-xs font-medium interactive ${
                   showChat
                     ? 'border-brand/40 bg-brand-soft text-brand-ink'
@@ -660,30 +767,54 @@ export default function Wizard({ onClose, draftId = null }) {
                     <div className="mt-0.5 truncate text-brand">{fileName}</div>
                   </div>
                 )}
-                {STEPS.map((s, i) => {
-                  const done = visited[i] && i < step;
-                  const current = i === step;
+                {stepStatuses.map((s) => {
+                  const current = s.index === step;
+                  const done = s.complete && (visited[s.index] || s.index < step || !s.required);
                   return (
                     <button
                       key={s.title}
-                      onClick={() => goto(i)}
+                      onClick={() => goto(s.index)}
                       className={`mb-1 flex w-full items-start gap-3 rounded-control px-3 py-2.5 text-left transition ${
-                        current ? 'bg-surface shadow-raise' : 'hover:bg-surface/70'
+                        current
+                          ? 'bg-surface shadow-raise'
+                          : s.highlight
+                            ? 'bg-warn-soft/50 hover:bg-warn-soft'
+                            : 'hover:bg-surface/70'
                       }`}
                     >
                       <span
-                        className={`mono mt-0.5 shrink-0 text-[11px] font-semibold tabular-nums ${
-                          current ? 'text-ink' : done ? 'text-success' : 'text-ink-faint'
+                        className={`mono mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${
+                          done
+                            ? 'bg-success-soft text-success'
+                            : current
+                              ? 'bg-ink text-white'
+                              : s.highlight
+                                ? 'bg-warn-soft text-warn'
+                                : 'text-ink-faint'
                         }`}
                       >
-                        {done ? '✓' : String(i + 1).padStart(2, '0')}
+                        {done ? '✓' : String(s.index + 1).padStart(2, '0')}
                       </span>
-                      <span
-                        className={`block text-sm ${
-                          current ? 'font-semibold text-ink' : 'text-ink-muted'
-                        }`}
-                      >
-                        {s.title}
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className={`block text-sm ${
+                            current ? 'font-semibold text-ink' : s.highlight ? 'font-medium text-ink-soft' : 'text-ink-muted'
+                          }`}
+                        >
+                          {s.title}
+                        </span>
+                        {s.required && (
+                          <span className={`mt-0.5 block text-[10px] font-medium uppercase tracking-wide ${
+                            done ? 'text-success' : 'text-warn'
+                          }`}>
+                            {done ? 'Complete' : 'Required'}
+                          </span>
+                        )}
+                        {!s.required && (
+                          <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-wide text-ink-faint">
+                            Optional
+                          </span>
+                        )}
                       </span>
                     </button>
                   );
@@ -702,24 +833,45 @@ export default function Wizard({ onClose, draftId = null }) {
                     {STEPS.map((item, i) => (
                       <option key={item.title} value={i} disabled={!visited[i] && i > step}>
                         {i + 1}. {item.title}
+                        {item.required ? (stepStatuses[i]?.complete ? ' ✓' : ' *') : ''}
                       </option>
                     ))}
                   </select>
                 </label>
-                <div className="type-overline">Step {step + 1} of 8</div>
+                <div className="type-overline flex items-center gap-2">
+                  Step {step + 1} of 8
+                  {STEPS[step]?.required ? (
+                    <span className={`rounded-control px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                      stepComplete ? 'bg-success-soft text-success' : 'bg-warn-soft text-warn'
+                    }`}>
+                      {stepComplete ? 'Complete' : 'Required'}
+                    </span>
+                  ) : (
+                    <span className="rounded-control bg-elevated px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
+                      Optional
+                    </span>
+                  )}
+                </div>
                 <h2 className="font-display mt-2 text-title-lg text-ink">{STEPS[step].title}</h2>
 
-                {step === 0 && missingFields.length > 0 && (
+                {missingFields.length > 0 && step < 7 && (
                   <div className="mt-3 flex items-start gap-2 rounded-panel border border-line bg-warn-soft px-3 py-2.5">
                     <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-warn" />
                     <div>
                       <div className="text-sm font-semibold text-ink-soft">
-                        Missing mandatory fields. Please complete them manually or use the AI
-                        assistant.
+                        Missing required fields. Complete them here or use the AI assistant.
                       </div>
                       <div className="text-xs text-ink-muted">
                         Still needed: {missingFields.map((x) => x.label).join(', ')}
                       </div>
+                    </div>
+                  </div>
+                )}
+                {stepComplete && step < 7 && (
+                  <div className="mt-3 flex items-start gap-2 rounded-panel border border-success/25 bg-success-soft px-3 py-2.5">
+                    <Icon name="checkCircle" size={16} className="mt-0.5 shrink-0 text-success" />
+                    <div className="text-sm font-medium text-ink-soft">
+                      {sectionNote || 'This section looks good.'}
                     </div>
                   </div>
                 )}
@@ -752,7 +904,28 @@ export default function Wizard({ onClose, draftId = null }) {
                     errors={showErrors ? validationErrors : {}}
                   />
                 )}
-                {step === 7 && <Step8 f={f} errors={showErrors ? validationErrors : {}} />}
+                {step === 7 && (
+                  <Step8
+                    f={f}
+                    errors={validationErrors}
+                    issues={reviewIssues}
+                    onJump={(issue) => jumpToStep(issue.step, issue.key)}
+                    onOpenAssistant={() => {
+                      setChatOpen(true);
+                      setMessages([]);
+                      if (reviewIssues[0]) {
+                        setChatFocusKey(reviewIssues[0].key);
+                        pushMessage(
+                          'assistant',
+                          `I can help finish onboarding. ${reviewIssues[0].message} What value should we use?`,
+                          reviewIssues.map((x) => x.message.replace(/\.$/, ''))
+                        );
+                      } else {
+                        pushMessage('assistant', completeNoteForStep(7, true));
+                      }
+                    }}
+                  />
+                )}
               </div>
 
               {showChat && (
@@ -774,7 +947,8 @@ export default function Wizard({ onClose, draftId = null }) {
                     messages={messages}
                     onSend={handleChatSend}
                     onClose={() => setChatOpen(false)}
-                    totalRequired={WIZARD_CHAT_FIELDS.filter((f) => f.required).length}
+                    totalRequired={countRequiredChatFields(step, f, validationErrors) || missingFields.length || 1}
+                    completeNote={sectionNote}
                     busy={chatBusy}
                   />
                   {chatError && (
@@ -869,14 +1043,16 @@ function Step1({ f, set, missingKeys = new Set(), errors = {} }) {
       </div>
       <div className="mt-4 grid grid-cols-1 items-start gap-x-5 gap-y-5 sm:grid-cols-2">
         <Field label="Account Name" required>
-          <TextInput
-            placeholder="e.g. Boston Sanitation Co"
-            value={f.accountName}
-            className={warnInput(missingKeys.has('accountName') || errors.accountName)}
-            onChange={(e) => set({ accountName: e.target.value })}
-            aria-invalid={!!errors.accountName}
-          />
-          <InlineError message={errors.accountName} />
+          <div data-wizard-field="accountName" id="wizard-field-accountName">
+            <TextInput
+              placeholder="e.g. Boston Sanitation Co"
+              value={f.accountName}
+              className={warnInput(missingKeys.has('accountName') || errors.accountName)}
+              onChange={(e) => set({ accountName: e.target.value })}
+              aria-invalid={!!errors.accountName}
+            />
+            <InlineError message={errors.accountName} />
+          </div>
         </Field>
         <Field label="Account Owner">
           <div className="field-input flex items-center gap-2 bg-elevated text-ink-muted">
@@ -895,26 +1071,30 @@ function Step1({ f, set, missingKeys = new Set(), errors = {} }) {
           <InlineError message={errors.website} />
         </Field>
         <Field label="Phone" required>
-          <TextInput
-            value={f.phone}
-            className={warnInput(missingKeys.has('phone') || errors.phone)}
-            onChange={(e) => set({ phone: e.target.value })}
-            aria-invalid={!!errors.phone}
-          />
-          <InlineError message={errors.phone} />
+          <div data-wizard-field="phone" id="wizard-field-phone">
+            <TextInput
+              value={f.phone}
+              className={warnInput(missingKeys.has('phone') || errors.phone)}
+              onChange={(e) => set({ phone: e.target.value })}
+              aria-invalid={!!errors.phone}
+            />
+            <InlineError message={errors.phone} />
+          </div>
         </Field>
         <Field label="Description" span2>
           <TextArea rows={2} value={f.description} onChange={(e) => set({ description: e.target.value })} />
         </Field>
         <Field label="Service Provider UID" required>
-          <TextInput
-            placeholder="10-char unique - e.g. EDMTNA8001"
-            value={f.uid}
-            className={warnInput(missingKeys.has('uid') || errors.uid)}
-            onChange={(e) => set({ uid: e.target.value.toUpperCase().slice(0, 10) })}
-            aria-invalid={!!errors.uid}
-          />
-          <InlineError message={errors.uid} />
+          <div data-wizard-field="uid" id="wizard-field-uid">
+            <TextInput
+              placeholder="10-char unique - e.g. EDMTNA8001"
+              value={f.uid}
+              className={warnInput(missingKeys.has('uid') || errors.uid)}
+              onChange={(e) => set({ uid: e.target.value.toUpperCase().slice(0, 10) })}
+              aria-invalid={!!errors.uid}
+            />
+            <InlineError message={errors.uid} />
+          </div>
         </Field>
         <Field label="Industry">
           <Select options={PICKLISTS.industry} value={f.industry} onChange={(e) => set({ industry: e.target.value })} />
@@ -966,6 +1146,7 @@ function Step2({ f, set, setNotif, toggleServiceType, errors = {} }) {
           <span className="font-medium text-ink-muted">{f.serviceTypes.length} selected</span>
         )}
       </div>
+      <div data-wizard-field="serviceTypes" id="wizard-field-serviceTypes">
       <InlineError message={errors.serviceTypes} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {SERVICE_TYPE_CARDS.map((c) => {
@@ -987,6 +1168,7 @@ function Step2({ f, set, setNotif, toggleServiceType, errors = {} }) {
             </button>
           );
         })}
+      </div>
       </div>
 
       <Field label="Operational Modules" className="mt-5">
@@ -1160,20 +1342,28 @@ function AddressPanel({ title, addr, onChange, disabled, header, errorPrefix, er
           <Select options={PICKLISTS.country} value={addr.country} disabled={disabled} onChange={(e) => onChange({ country: e.target.value })} />
         </Field>
         <Field label="Street">
-          <TextArea rows={2} value={addr.street} disabled={disabled} onChange={(e) => onChange({ street: e.target.value })} aria-invalid={!!errors[`${errorPrefix}.street`]} className={warnInput(errors[`${errorPrefix}.street`])} />
-          <InlineError message={errors[`${errorPrefix}.street`]} />
+          <div data-wizard-field={`${errorPrefix}.street`} id={`wizard-field-${errorPrefix}-street`}>
+            <TextArea rows={2} value={addr.street} disabled={disabled} onChange={(e) => onChange({ street: e.target.value })} aria-invalid={!!errors[`${errorPrefix}.street`]} className={warnInput(errors[`${errorPrefix}.street`])} />
+            <InlineError message={errors[`${errorPrefix}.street`]} />
+          </div>
         </Field>
         <Field label="City">
-          <TextInput value={addr.city} disabled={disabled} onChange={(e) => onChange({ city: e.target.value })} aria-invalid={!!errors[`${errorPrefix}.city`]} className={warnInput(errors[`${errorPrefix}.city`])} />
-          <InlineError message={errors[`${errorPrefix}.city`]} />
+          <div data-wizard-field={`${errorPrefix}.city`} id={`wizard-field-${errorPrefix}-city`}>
+            <TextInput value={addr.city} disabled={disabled} onChange={(e) => onChange({ city: e.target.value })} aria-invalid={!!errors[`${errorPrefix}.city`]} className={warnInput(errors[`${errorPrefix}.city`])} />
+            <InlineError message={errors[`${errorPrefix}.city`]} />
+          </div>
         </Field>
         <Field label="State / Province">
-          <Select options={PICKLISTS.wizardProvinceState} placeholder="Select…" value={addr.state} disabled={disabled} onChange={(e) => onChange({ state: e.target.value })} aria-invalid={!!errors[`${errorPrefix}.state`]} className={warnInput(errors[`${errorPrefix}.state`])} />
-          <InlineError message={errors[`${errorPrefix}.state`]} />
+          <div data-wizard-field={`${errorPrefix}.state`} id={`wizard-field-${errorPrefix}-state`}>
+            <Select options={PICKLISTS.wizardProvinceState} placeholder="Select…" value={addr.state} disabled={disabled} onChange={(e) => onChange({ state: e.target.value })} aria-invalid={!!errors[`${errorPrefix}.state`]} className={warnInput(errors[`${errorPrefix}.state`])} />
+            <InlineError message={errors[`${errorPrefix}.state`]} />
+          </div>
         </Field>
         <Field label="Zip / Postal Code">
-          <TextInput value={addr.zip} disabled={disabled} onChange={(e) => onChange({ zip: e.target.value })} aria-invalid={!!errors[`${errorPrefix}.zip`]} className={warnInput(errors[`${errorPrefix}.zip`])} />
-          <InlineError message={errors[`${errorPrefix}.zip`]} />
+          <div data-wizard-field={`${errorPrefix}.zip`} id={`wizard-field-${errorPrefix}-zip`}>
+            <TextInput value={addr.zip} disabled={disabled} onChange={(e) => onChange({ zip: e.target.value })} aria-invalid={!!errors[`${errorPrefix}.zip`]} className={warnInput(errors[`${errorPrefix}.zip`])} />
+            <InlineError message={errors[`${errorPrefix}.zip`]} />
+          </div>
         </Field>
       </div>
     </div>
@@ -1225,6 +1415,7 @@ function Step5({ f, setProduct, errors = {} }) {
           Products span all segments; no per-segment product configuration.
         </span>
       </div>
+      <div data-wizard-field="products" id="wizard-field-products">
       <InlineError message={errors.products} />
       <div className="mt-4 max-h-96 space-y-2 overflow-y-auto scroll-thin">
         {products.map((p) => {
@@ -1259,6 +1450,7 @@ function Step5({ f, setProduct, errors = {} }) {
           );
         })}
       </div>
+      </div>
     </>
   );
 }
@@ -1278,7 +1470,7 @@ function Step6({ f, addRoute, removeRoute, setRoute, toggleRouteDay, errors = {}
         {f.routes.map((r, i) => (
           <div key={i} className="rounded-panel border border-line p-3">
             <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-4">
-              <div>
+              <div data-wizard-field={`routes.${i}.routeNumber`} id={`wizard-field-routes-${i}-routeNumber`}>
                 {i === 0 && <div className="type-overline mb-1">Route Number</div>}
                 <TextInput placeholder="R-201" value={r.routeNumber} onChange={(e) => setRoute(i, { routeNumber: e.target.value })} aria-invalid={!!errors[`routes.${i}.routeNumber`]} className={warnInput(errors[`routes.${i}.routeNumber`])} />
                 <InlineError message={errors[`routes.${i}.routeNumber`]} />
@@ -1287,7 +1479,7 @@ function Step6({ f, addRoute, removeRoute, setRoute, toggleRouteDay, errors = {}
                 {i === 0 && <div className="type-overline mb-1">Collection Type</div>}
                 <Select options={PICKLISTS.routeCollectionType} value={r.collectionType} onChange={(e) => setRoute(i, { collectionType: e.target.value })} />
               </div>
-              <div>
+              <div data-wizard-field={`routes.${i}.days`} id={`wizard-field-routes-${i}-days`}>
                 {i === 0 && <div className="type-overline mb-1">Days</div>}
                 <div className="flex gap-1">
                   {DAY_LABELS.map((d, di) => (
@@ -1343,17 +1535,17 @@ function Step7({ f, addContact, removeContact, setContact, errors = {} }) {
         {f.contacts.map((c, i) => (
           <div key={i} className="rounded-panel border border-line p-3">
             <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-5">
-              <div>
+              <div data-wizard-field={`contacts.${i}.firstName`} id={`wizard-field-contacts-${i}-firstName`}>
                 {i === 0 && <div className="type-overline mb-1">First Name</div>}
                 <TextInput value={c.firstName} onChange={(e) => setContact(i, { firstName: e.target.value })} aria-invalid={!!errors[`contacts.${i}.firstName`]} className={warnInput(errors[`contacts.${i}.firstName`])} />
                 <InlineError message={errors[`contacts.${i}.firstName`]} />
               </div>
-              <div>
+              <div data-wizard-field={`contacts.${i}.lastName`} id={`wizard-field-contacts-${i}-lastName`}>
                 {i === 0 && <div className="type-overline mb-1">Last Name</div>}
                 <TextInput value={c.lastName} onChange={(e) => setContact(i, { lastName: e.target.value })} aria-invalid={!!errors[`contacts.${i}.lastName`]} className={warnInput(errors[`contacts.${i}.lastName`])} />
                 <InlineError message={errors[`contacts.${i}.lastName`]} />
               </div>
-              <div>
+              <div data-wizard-field={`contacts.${i}.email`} id={`wizard-field-contacts-${i}-email`}>
                 {i === 0 && <div className="type-overline mb-1">Email</div>}
                 <TextInput type="email" value={c.email} onChange={(e) => setContact(i, { email: e.target.value })} aria-invalid={!!errors[`contacts.${i}.email`]} className={warnInput(errors[`contacts.${i}.email`])} />
                 <InlineError message={errors[`contacts.${i}.email`]} />
@@ -1392,7 +1584,7 @@ function ReviewCard({ label, children }) {
   );
 }
 
-function Step8({ f, errors = {} }) {
+function Step8({ f, errors = {}, issues = [], onJump, onOpenAssistant }) {
   const dash = <span className="text-ink-faint">—</span>;
   const products = Object.values(f.products).filter((p) => p.selected).length;
   const routes = f.routes.filter((r) => r.routeNumber);
@@ -1412,9 +1604,47 @@ function Step8({ f, errors = {} }) {
   return (
     <>
       <p className="mt-1 text-sm text-ink-muted">Review everything before activating this Service Provider.</p>
-      {Object.keys(errors).length > 0 && (
-        <div className="mt-4 rounded-panel border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
-          Resolve {Object.keys(errors).length} validation {Object.keys(errors).length === 1 ? 'issue' : 'issues'} before activation.
+      {issues.length > 0 && (
+        <div className="mt-4 rounded-panel border border-danger/30 bg-danger-soft p-3" role="alert">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-danger">
+                {issues.length} required {issues.length === 1 ? 'item needs' : 'items need'} attention
+              </p>
+              <p className="mt-0.5 text-xs text-ink-muted">Click an item to jump to that field, or fix them with the AI assistant.</p>
+            </div>
+            {onOpenAssistant && (
+              <button type="button" className="btn-secondary text-xs" onClick={onOpenAssistant}>
+                <Icon name="help" size={14} /> Fix with AI
+              </button>
+            )}
+          </div>
+          <ul className="mt-3 space-y-1.5">
+            {issues.map((issue) => (
+              <li key={issue.key}>
+                <button
+                  type="button"
+                  onClick={() => onJump?.(issue)}
+                  className="flex w-full items-start gap-2 rounded-control border border-danger/20 bg-surface px-3 py-2 text-left text-sm interactive hover:border-danger/40"
+                >
+                  <Icon name="alert" size={14} className="mt-0.5 shrink-0 text-danger" />
+                  <span className="min-w-0">
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                      Step {issue.step + 1}: {issue.stepTitle}
+                    </span>
+                    <span className="text-ink-soft">{issue.message}</span>
+                  </span>
+                  <Icon name="chevronRight" size={14} className="ml-auto mt-0.5 shrink-0 text-ink-faint" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {issues.length === 0 && (
+        <div className="mt-4 flex items-start gap-2 rounded-panel border border-success/25 bg-success-soft px-3 py-2.5">
+          <Icon name="checkCircle" size={16} className="mt-0.5 shrink-0 text-success" />
+          <p className="text-sm font-medium text-ink-soft">Everything looks good — you can activate this service provider.</p>
         </div>
       )}
       <div className="mt-4 space-y-2">

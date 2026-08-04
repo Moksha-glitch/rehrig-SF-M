@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Icon from '../../components/Icon.jsx';
 import { extractWizardAccountFromContract } from '@backend/assistant.js';
+import { getChatFieldsForStep } from './wizardSteps.js';
 
 const MAX_CONTRACT_BYTES = 20 * 1024 * 1024;
 
-/** Fields the assistant can fill on wizard Step 1 (Account Information). */
+/** Account-step field catalog (also defined per-step in wizardSteps.js). */
 export const WIZARD_CHAT_FIELDS = [
   {
     key: 'accountName',
@@ -53,14 +54,8 @@ export const WIZARD_CHAT_FIELDS = [
   },
 ];
 
-export function getMissingWizardFields(f) {
-  return WIZARD_CHAT_FIELDS.filter((field) => {
-    if (!field.required) return false;
-    const v = f[field.key];
-    if (field.key === 'accountName') return !v || String(v).trim().length <= 2;
-    if (field.key === 'uid') return !v || String(v).trim().length < 3;
-    return v === null || v === undefined || String(v).trim() === '';
-  });
+export function getMissingWizardFields(f, errors = {}, stepIndex = 0) {
+  return getChatFieldsForStep(f, errors, stepIndex);
 }
 
 /** Options are always the missing field labels. */
@@ -88,9 +83,10 @@ export function buildFieldQuestion(field, { intro, missingFields = [] } = {}) {
 
 function normalizeWizardValue(key, raw) {
   let value = String(raw).trim().replace(/[.,;]+$/, '');
-  if (key === 'uid') value = value.toUpperCase().replace(/\s+/g, '').slice(0, 10);
-  if (key === 'phone') value = value.replace(/\s{2,}/g, ' ').trim();
-  if (key === 'supportEmail') value = value.toLowerCase();
+  const leaf = key.includes('.') ? key.split('.').pop() : key;
+  if (key === 'uid' || leaf === 'uid') value = value.toUpperCase().replace(/\s+/g, '').slice(0, 10);
+  if (key === 'phone' || leaf === 'phone') value = value.replace(/\s{2,}/g, ' ').trim();
+  if (key === 'supportEmail' || leaf === 'email') value = value.toLowerCase();
   return value;
 }
 
@@ -133,7 +129,7 @@ export function mockParseWizardChat(text, missingFields, focusedKey = null) {
           field: null,
           value: null,
           selectField: null,
-          reply: 'All mandatory account fields look complete. Continue with Next when you are ready.',
+          reply: 'This section looks good. Continue when you are ready.',
           options: [],
         });
         return;
@@ -497,6 +493,7 @@ export function WizardChatbot({
   focusedKey = null,
   variant = 'rail',
   totalRequired = null,
+  completeNote = null,
 }) {
   const [draft, setDraft] = useState('');
   const bottomRef = useRef(null);
@@ -511,6 +508,17 @@ export function WizardChatbot({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, busy]);
+
+  // Keep the composer focused whenever the assistant panel is open
+  useEffect(() => {
+    if (busy) return;
+    const id = window.setTimeout(() => {
+      const el = inputRef.current;
+      if (!el || el.disabled) return;
+      el.focus({ preventScroll: true });
+    }, 30);
+    return () => window.clearTimeout(id);
+  }, [busy, focusedKey, messages, active?.key, complete]);
 
   const submit = (e) => {
     e.preventDefault();
@@ -539,7 +547,7 @@ export function WizardChatbot({
           <h3 className="font-display text-title-sm text-ink">Assistant</h3>
           <p className="mt-0.5 truncate text-xs text-ink-muted">
             {complete
-              ? 'All set — review the form'
+              ? completeNote || 'This section looks good'
               : active
                 ? active.question
                 : 'Choose a field to fill'}
@@ -583,7 +591,9 @@ export function WizardChatbot({
         {complete && messages.length === 0 && (
           <div className="my-auto flex flex-col items-center px-2 text-center">
             <Icon name="checkCircle" size={22} className="text-success" />
-            <p className="mt-2 text-sm font-medium text-ink">Required fields complete</p>
+            <p className="mt-2 text-sm font-medium text-ink">
+              {completeNote || 'This section looks good.'}
+            </p>
           </div>
         )}
 
@@ -658,7 +668,7 @@ export function WizardChatbot({
                     ? active.placeholder || `Enter ${active.label.toLowerCase()}…`
                     : 'Select a field first…'
               }
-              disabled={busy || !active}
+              disabled={busy}
               className="field-input min-h-0 min-w-0 flex-1 !py-2 text-sm"
               aria-label={active ? `Value for ${active.label}` : 'Assistant reply'}
             />

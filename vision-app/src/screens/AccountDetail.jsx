@@ -366,104 +366,112 @@ function EditProviderDialog({ account, onClose, onSaved }) {
   };
 
   return (
-    <Dialog onClose={onClose} title="Edit service provider" description={account.name} wide>
-      <form onSubmit={save} className="space-y-4 overflow-y-auto px-6 py-5 scroll-thin">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Account name" required>
-            <TextInput value={form.name} onChange={(e) => set({ name: e.target.value })} />
-          </Field>
-          <Field label="Service Provider UID" required>
-            <TextInput value={form.uid} onChange={(e) => set({ uid: e.target.value })} />
-          </Field>
-          <Field label="Industry">
-            <Select
-              options={PICKLISTS.industry || ['Municipal', 'Commercial', 'Industrial']}
-              value={form.industry}
-              onChange={(e) => set({ industry: e.target.value })}
-            />
-          </Field>
-          <Field label="Type">
-            <Select
-              options={PICKLISTS.accountType || ['Customer', 'Partner']}
-              value={form.type}
-              onChange={(e) => set({ type: e.target.value })}
-            />
-          </Field>
-          <Field label="Phone">
-            <TextInput value={form.phone} onChange={(e) => set({ phone: e.target.value })} />
-          </Field>
-          <Field label="Website">
-            <TextInput value={form.website} onChange={(e) => set({ website: e.target.value })} />
-          </Field>
-          <Field label="Support email">
-            <TextInput
-              type="email"
-              value={form.supportEmail}
-              onChange={(e) => set({ supportEmail: e.target.value })}
-            />
-          </Field>
-          <Field label="Employees">
-            <TextInput
-              type="number"
-              min="0"
-              value={form.employees}
-              onChange={(e) => set({ employees: e.target.value })}
-            />
-          </Field>
-          <Field label="Service types" span2 hint="Comma-separated, e.g. Residential, Commercial">
-            <TextInput
-              value={form.serviceTypes}
-              onChange={(e) => set({ serviceTypes: e.target.value })}
-            />
-          </Field>
-          <Field label="Description" span2>
-            <TextInput
-              value={form.description}
-              onChange={(e) => set({ description: e.target.value })}
-            />
-          </Field>
-          <Field label="Billing street" span2>
-            <TextInput
-              value={form.billingStreet}
-              onChange={(e) => set({ billingStreet: e.target.value })}
-            />
-          </Field>
-          <Field label="City">
-            <TextInput
-              value={form.billingCity}
-              onChange={(e) => set({ billingCity: e.target.value })}
-            />
-          </Field>
-          <Field label="State / province">
-            <TextInput
-              value={form.billingState}
-              onChange={(e) => set({ billingState: e.target.value })}
-            />
-          </Field>
-          <Field label="Postal code">
-            <TextInput
-              value={form.billingZip}
-              onChange={(e) => set({ billingZip: e.target.value })}
-            />
-          </Field>
-          <Field label="Country">
-            <TextInput
-              value={form.billingCountry}
-              onChange={(e) => set({ billingCountry: e.target.value })}
-            />
-          </Field>
+    <Dialog
+      onClose={onClose}
+      title="Edit service provider"
+      description={account.name}
+      wide
+      className="h-[min(90vh,720px)]"
+    >
+      <form onSubmit={save} className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5 scroll-thin">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Account name" required>
+              <TextInput value={form.name} onChange={(e) => set({ name: e.target.value })} />
+            </Field>
+            <Field label="Service Provider UID" required>
+              <TextInput value={form.uid} onChange={(e) => set({ uid: e.target.value })} />
+            </Field>
+            <Field label="Industry">
+              <Select
+                options={PICKLISTS.industry || ['Municipal', 'Commercial', 'Industrial']}
+                value={form.industry}
+                onChange={(e) => set({ industry: e.target.value })}
+              />
+            </Field>
+            <Field label="Type">
+              <Select
+                options={PICKLISTS.accountType || ['Customer', 'Partner']}
+                value={form.type}
+                onChange={(e) => set({ type: e.target.value })}
+              />
+            </Field>
+            <Field label="Phone">
+              <TextInput value={form.phone} onChange={(e) => set({ phone: e.target.value })} />
+            </Field>
+            <Field label="Website">
+              <TextInput value={form.website} onChange={(e) => set({ website: e.target.value })} />
+            </Field>
+            <Field label="Support email">
+              <TextInput
+                type="email"
+                value={form.supportEmail}
+                onChange={(e) => set({ supportEmail: e.target.value })}
+              />
+            </Field>
+            <Field label="Employees">
+              <TextInput
+                type="number"
+                min="0"
+                value={form.employees}
+                onChange={(e) => set({ employees: e.target.value })}
+              />
+            </Field>
+            <Field label="Service types" span2 hint="Comma-separated, e.g. Residential, Commercial">
+              <TextInput
+                value={form.serviceTypes}
+                onChange={(e) => set({ serviceTypes: e.target.value })}
+              />
+            </Field>
+            <Field label="Description" span2>
+              <TextInput
+                value={form.description}
+                onChange={(e) => set({ description: e.target.value })}
+              />
+            </Field>
+            <Field label="Billing street" span2>
+              <TextInput
+                value={form.billingStreet}
+                onChange={(e) => set({ billingStreet: e.target.value })}
+              />
+            </Field>
+            <Field label="City">
+              <TextInput
+                value={form.billingCity}
+                onChange={(e) => set({ billingCity: e.target.value })}
+              />
+            </Field>
+            <Field label="State / province">
+              <TextInput
+                value={form.billingState}
+                onChange={(e) => set({ billingState: e.target.value })}
+              />
+            </Field>
+            <Field label="Postal code">
+              <TextInput
+                value={form.billingZip}
+                onChange={(e) => set({ billingZip: e.target.value })}
+              />
+            </Field>
+            <Field label="Country">
+              <TextInput
+                value={form.billingCountry}
+                onChange={(e) => set({ billingCountry: e.target.value })}
+              />
+            </Field>
+          </div>
+          <Checkbox
+            label="Mark inactive"
+            checked={form.inactive}
+            onChange={(e) => set({ inactive: e.target.checked })}
+          />
+          {error && (
+            <p className="text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
         </div>
-        <Checkbox
-          label="Mark inactive"
-          checked={form.inactive}
-          onChange={(e) => set({ inactive: e.target.checked })}
-        />
-        {error && (
-          <p className="text-sm text-danger" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="flex justify-end gap-2 border-t border-line pt-4">
+        <div className="flex shrink-0 justify-end gap-2 border-t border-line bg-surface px-6 py-4">
           <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
             Cancel
           </Button>

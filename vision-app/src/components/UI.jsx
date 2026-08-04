@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 
 // ---- Page chrome (Editorial Ops · Premium) ----
@@ -442,7 +443,7 @@ export function Dialog({
     };
   }, []);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 animate-fade-in">
       <button
         type="button"
@@ -459,12 +460,12 @@ export function Dialog({
         aria-describedby={description ? descriptionId : undefined}
         aria-label={title ? undefined : 'Dialog'}
         tabIndex={-1}
-        className={`relative z-10 flex max-h-[min(92vh,880px)] w-full flex-col overflow-hidden rounded-sheet border border-line bg-surface shadow-float animate-fade-up ${
+        className={`relative z-10 flex max-h-[min(90vh,860px)] w-full flex-col overflow-hidden rounded-sheet border border-line bg-surface shadow-float animate-fade-up ${
           wide ? 'max-w-4xl' : 'max-w-lg'
         } ${className}`}
       >
         {(title || description) && (
-          <div className="border-b border-line px-6 py-5">
+          <div className="shrink-0 border-b border-line px-6 py-5">
             {title && (
               <h2 id={titleId} className="font-display text-title-md text-ink">
                 {title}
@@ -477,9 +478,10 @@ export function Dialog({
             )}
           </div>
         )}
-        {children}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
