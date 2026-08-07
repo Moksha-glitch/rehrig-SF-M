@@ -15,6 +15,7 @@ import { useAccounts } from '../hooks/useAccounts.js';
 import { useRecords } from '../hooks/useRecords.js';
 import { useDashboardAnalytics } from '../hooks/useConfig.js';
 import { getErrorMessage } from '../lib/errors.js';
+import HomeAssistant from '../components/HomeAssistant.jsx';
 
 const AGING_COLORS = ['#0f7b55', '#8b969f', '#c27803', '#b42318'];
 
@@ -102,6 +103,7 @@ export default function Dashboard() {
       >
 
       <StatStrip
+        compact
         items={[
           { label: 'Active dispatches', value: activeDispatches.length, hint: `${dispatches.length} dispatches in dataset` },
           { label: 'Open work orders', value: openWorkOrders.length, hint: `${workOrders.length} total records` },
@@ -109,10 +111,8 @@ export default function Dashboard() {
           { label: `Tons on ${latestTipDate || 'latest date'}`, value: latestTons.toFixed(1), hint: 'Sum of aggregated tip records' },
         ]}
       />
-      <div className="mt-3 flex flex-wrap gap-3 text-xs">
-        <button className="link-brand" onClick={() => navigate('dispatches')}>Open dispatches →</button>
-        <button className="link-brand" onClick={() => navigate('workOrders')}>Open work orders →</button>
-        <button className="link-brand" onClick={() => navigate('trucks')}>Review fleet →</button>
+      <div className="mt-4">
+        <HomeAssistant />
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-12">

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
-import { Page, PageHeader, Button } from '../components/UI.jsx';
+import { Page, PageHeader, Button, ConfirmDialog } from '../components/UI.jsx';
 import { FileConfirm, WizardChatbot, validateContractFile } from './wizard/WizardAssist.jsx';
 import { extractContractFile } from '@backend/assistant.js';
 
@@ -639,17 +639,16 @@ export default function ContractOnboarding({ onComplete }) {
       )}
 
       {resetOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/45 p-4">
-          <div role="alertdialog" aria-modal="true" aria-labelledby="reset-title" aria-describedby="reset-description" className="w-full max-w-md rounded-sheet border border-line bg-surface p-6 shadow-float">
-            <p className="type-overline">Start over?</p>
-            <h2 id="reset-title" className="font-display mt-2 text-title-md text-ink">Discard extracted data?</h2>
-            <p id="reset-description" className="mt-2 text-sm text-ink-muted">This clears the current contract, form edits, and assistant conversation.</p>
-            <div className="mt-6 flex justify-end gap-2">
-              <button type="button" className="btn-secondary" onClick={() => setResetOpen(false)}>Keep editing</button>
-              <button type="button" className="btn-primary" onClick={reset}>Start over</button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          open={resetOpen}
+          title="Discard extracted data?"
+          description="This clears the current contract, form edits, and assistant conversation."
+          confirmLabel="Start over"
+          cancelLabel="Keep editing"
+          severity="danger"
+          onCancel={() => setResetOpen(false)}
+          onConfirm={reset}
+        />
       )}
     </Page>
   );

@@ -5,6 +5,7 @@ import { useStore } from '../state/AppStore.jsx';
 import { useAccounts } from '../hooks/useAccounts.js';
 import { useContacts } from '../hooks/useRecords.js';
 import { getErrorMessage } from '../lib/errors.js';
+import HomeAssistant from '../components/HomeAssistant.jsx';
 
 export default function RegistryHome({ onOnboard }) {
   const { navigate } = useStore();
@@ -50,6 +51,7 @@ export default function RegistryHome({ onOnboard }) {
         }}
       >
         <StatStrip
+          compact
           items={[
             { label: 'Total providers', value: accounts.length, hint: 'On the platform' },
             { label: 'Active providers', value: active, hint: 'Currently enrolled' },
@@ -57,13 +59,8 @@ export default function RegistryHome({ onOnboard }) {
             { label: 'Locations', value: locations, hint: 'Platform footprint' },
           ]}
         />
-        <div className="mt-3 flex flex-wrap gap-3 text-xs">
-          <button className="link-brand" onClick={() => navigate('accounts')}>
-            Review all providers →
-          </button>
-          <button className="link-brand" onClick={() => navigate('contacts')}>
-            Review contacts →
-          </button>
+        <div className="mt-4">
+          <HomeAssistant onOnboard={onOnboard} />
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-12">
@@ -127,11 +124,11 @@ export default function RegistryHome({ onOnboard }) {
               {[
                 { icon: 'building', label: 'Manage service providers', module: 'accounts' },
                 { icon: 'users', label: 'Contact directory', module: 'contacts' },
-                { icon: 'settings', label: 'Workspace', module: 'setup' },
+                { icon: 'settings', label: 'Workspace', module: 'setup', params: { section: 'userMgmt' } },
               ].map((q, i) => (
                 <li key={q.label}>
                   <button
-                    onClick={() => navigate(q.module)}
+                    onClick={() => navigate(q.module, q.params)}
                     className="flex w-full items-center gap-3 py-3.5 text-left text-sm font-medium text-ink-soft interactive hover:text-ink"
                   >
                     <span className="mono text-xs text-ink-faint">

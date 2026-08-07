@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useStore } from './state/AppStore.jsx';
 import { useAuth } from './state/AuthContext.jsx';
 import { useAccounts } from './hooks/useAccounts.js';
 import { useCompleteOnboarding } from './hooks/useOnboarding.js';
-import Sidebar from './components/Sidebar.jsx';
 import TopBar from './components/TopBar.jsx';
+import GlobalAssistant from './components/GlobalAssistant.jsx';
 import { Toast } from './components/UI.jsx';
 import Login from './screens/Login.jsx';
 import RegistryHome from './screens/RegistryHome.jsx';
@@ -22,7 +22,7 @@ import MapCenter from './screens/MapCenter.jsx';
 import BulkImport from './screens/BulkImport.jsx';
 import ContractOnboarding from './screens/ContractOnboarding.jsx';
 import { getErrorMessage } from './lib/errors.js';
-import { appModeLabel, isDemoMode } from './config/appMode.js';
+import { onboardingNavParams, parseOnboardingReturn } from './utils/appNavigation.js';
 
 function Router({ onOnboard }) {
   const { state, persona, canAccessModule, navigate, toast } = useStore();
@@ -42,6 +42,7 @@ function Router({ onOnboard }) {
     productTypes: 'productTypes',
     apiIntegrations: 'apiIntegrations',
     notificationConfig: persona === 'rehrig' ? 'notificationConfig' : 'configure',
+    onboarding: 'onboarding',
     contractOnboarding: 'contractOnboarding',
     setup: 'setup',
     workOrders: 'workOrders',
@@ -68,7 +69,9 @@ function Router({ onOnboard }) {
 
   switch (module) {
     case 'home':
-      return persona === 'rehrig' ? <RegistryHome onOnboard={onOnboard} /> : <Dashboard />;
+      if (persona === 'rehrig') return <RegistryHome onOnboard={onOnboard} />;
+      if (persona === 'customer') return <CustomerHome view="home" />;
+      return <Dashboard />;
     case 'accounts':
       return <AccountsList onOnboard={onOnboard} />;
     case 'accountDetail':
@@ -111,6 +114,16 @@ function Router({ onOnboard }) {
       return <MapCenter />;
     case 'bulkImport':
       return <BulkImport />;
+    case 'onboarding': {
+      const returnNav = parseOnboardingReturn(params);
+      return (
+        <Wizard
+          key={params.draftId || 'new'}
+          draftId={params.draftId || null}
+          onClose={() => navigate(returnNav.module, returnNav.params)}
+        />
+      );
+    }
     case 'contractOnboarding':
       return (
         <ContractOnboarding
@@ -139,21 +152,17 @@ function Router({ onOnboard }) {
 }
 
 export default function App() {
-  const { state } = useStore();
+  const { state, navigate } = useStore();
   const { bootstrapping } = useAuth();
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [wizardOpen, setWizardOpen] = useState(false);
-  const [resumeDraftId, setResumeDraftId] = useState(null);
 
   const openOnboard = (draftId = null) => {
-    setResumeDraftId(typeof draftId === 'string' ? draftId : null);
-    setWizardOpen(true);
-  };
-
-  const closeWizard = () => {
-    setWizardOpen(false);
-    setResumeDraftId(null);
+    navigate(
+      'onboarding',
+      onboardingNavParams({
+        draftId: typeof draftId === 'string' ? draftId : null,
+        from: state.nav,
+      })
+    );
   };
 
   if (bootstrapping) {
@@ -167,43 +176,26 @@ export default function App() {
 
   if (!state.currentUser) return <Login />;
 
-  const toggleSidebar = () => {
-    if (window.matchMedia('(max-width: 767px)').matches) {
-      setMobileSidebarOpen((open) => !open);
-    } else {
-      setCollapsed((value) => !value);
-    }
-  };
+  const isOnboarding = state.nav.module === 'onboarding';
 
   return (
-    <div className="app-shell flex h-full w-full font-sans text-ink">
+    <div className="app-shell flex h-full w-full flex-col font-sans text-ink">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
-      <Sidebar
-        collapsed={collapsed}
-        mobileOpen={mobileSidebarOpen}
-        onClose={() => setMobileSidebarOpen(false)}
-      />
-      <div className="flex h-full min-w-0 flex-1 flex-col">
-        <div className="border-b border-line bg-elevated/80 px-3 py-1 text-center text-[11px] font-medium uppercase tracking-wide text-ink-muted sm:px-5">
-          {appModeLabel()} instance
-          {isDemoMode()
-            ? ' · local seed · no backend'
-            : ' · connected to vision-api'}
-        </div>
-        <TopBar onToggleSidebar={toggleSidebar} />
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="min-h-0 flex-1 overflow-y-auto scroll-thin"
-        >
-          <Router onOnboard={openOnboard} />
-        </main>
-      </div>
-      {wizardOpen && (
-        <Wizard key={resumeDraftId || 'new'} draftId={resumeDraftId} onClose={closeWizard} />
-      )}
+      <TopBar />
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={
+          isOnboarding
+            ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+            : 'min-h-0 flex-1 overflow-y-auto scroll-thin'
+        }
+      >
+        <Router onOnboard={openOnboard} />
+      </main>
+      <GlobalAssistant onOnboard={openOnboard} />
       <Toast message={state.toast} />
     </div>
   );

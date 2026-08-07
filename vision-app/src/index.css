@@ -17,10 +17,10 @@
   --color-ink-muted: #5a6772;
   --color-ink-faint: #687680;
 
-  --color-brand: #0b5f49;
-  --color-brand-hover: #094c3a;
-  --color-brand-soft: #e4f1eb;
-  --color-brand-ink: #064032;
+  --color-brand: #0b4f7d;
+  --color-brand-hover: #083e63;
+  --color-brand-soft: #eaf4fb;
+  --color-brand-ink: #073854;
 
   --color-accent: #c27803;
   --color-accent-soft: #fff6e8;
@@ -37,7 +37,7 @@
 
   --shadow-raise: 0 1px 2px rgba(12, 18, 25, 0.04), 0 1px 0 rgba(12, 18, 25, 0.02);
   --shadow-float: 0 18px 48px rgba(12, 18, 25, 0.12), 0 4px 12px rgba(12, 18, 25, 0.05);
-  --shadow-focus: 0 0 0 3px rgba(11, 95, 73, 0.18);
+  --shadow-focus: 0 0 0 3px rgba(11, 79, 125, 0.2);
   --shadow-soft: 0 8px 24px rgba(12, 18, 25, 0.06);
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -54,10 +54,10 @@
   --color-ink-soft: #e0e8e4;
   --color-ink-muted: #b2c0ba;
   --color-ink-faint: #91a19a;
-  --color-brand: #51b995;
-  --color-brand-hover: #72caab;
-  --color-brand-soft: #173d32;
-  --color-brand-ink: #b9f2dc;
+  --color-brand: #68b7e8;
+  --color-brand-hover: #8acaf0;
+  --color-brand-soft: #143246;
+  --color-brand-ink: #ccecff;
   --color-accent: #f0ad45;
   --color-accent-soft: #3e2d13;
   --color-line: #29383d;
@@ -68,7 +68,7 @@
   --color-danger-soft: #46201f;
   --color-warn: #f0ad45;
   --color-warn-soft: #3e2d13;
-  --shadow-focus: 0 0 0 3px rgba(81, 185, 149, 0.35);
+  --shadow-focus: 0 0 0 3px rgba(104, 183, 232, 0.35);
 }
 
 *,
@@ -174,7 +174,7 @@ a {
 
   .app-shell {
     background:
-      radial-gradient(900px 420px at 20% -5%, rgba(11, 95, 73, 0.04), transparent 55%),
+      radial-gradient(900px 420px at 20% -5%, rgba(11, 79, 125, 0.06), transparent 55%),
       var(--color-canvas);
   }
 
@@ -189,11 +189,11 @@ a {
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-control bg-ink px-4 py-2.5 text-sm font-semibold text-white interactive;
+    @apply inline-flex items-center justify-center gap-2 rounded-control bg-brand px-4 py-2.5 text-sm font-semibold text-white interactive;
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, var(--shadow-raise);
   }
   .btn-primary:hover:not(:disabled) {
-    background: var(--color-ink-soft);
+    background: var(--color-brand-hover);
     transform: translateY(-1px);
     box-shadow: var(--shadow-soft);
   }
@@ -219,11 +219,13 @@ a {
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-control border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink-soft interactive;
+    border-color: color-mix(in srgb, var(--color-brand) 38%, var(--color-line));
+    color: var(--color-brand);
     box-shadow: var(--shadow-raise);
   }
   .btn-secondary:hover:not(:disabled) {
-    border-color: var(--color-line-strong);
-    background: var(--color-elevated);
+    border-color: var(--color-brand);
+    background: var(--color-brand-soft);
     transform: translateY(-1px);
   }
 
@@ -333,6 +335,12 @@ a {
   border-radius: 0;
   box-shadow: none;
   min-height: 2.75rem;
+}
+.login-field-icon {
+  padding-left: 2.5rem;
+}
+.login-field-password {
+  padding-right: 2.75rem;
 }
 .login-field::placeholder {
   color: var(--color-ink-faint);

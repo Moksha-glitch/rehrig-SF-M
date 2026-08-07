@@ -7,6 +7,7 @@ import {
   Select,
   Checkbox,
   Toggle,
+  Dialog,
 } from '../../components/UI.jsx';
 import { PICKLISTS, HARDWARE_TYPES, SERVICE_TYPE_CARDS, DAY_LABELS } from '../../data/picklists.js';
 import { MASTER_CATALOG, WIZARD_PRODUCTS } from '../../data/seed.js';
@@ -594,7 +595,6 @@ export default function Wizard({ onClose, draftId = null }) {
         },
       });
       toast('Service Provider onboarded');
-      onClose();
       navigate('accountDetail', { accountId: account.id, tab: 'details' });
     } catch (error) {
       toast(getErrorMessage(error, 'Onboarding failed. Please try again.'), 'danger');
@@ -635,7 +635,6 @@ export default function Wizard({ onClose, draftId = null }) {
         setActiveDraftId(id);
         setCancelOpen(false);
         toast('Draft saved');
-        onClose();
         navigate('accounts');
       })
       .catch((error) => {
@@ -646,367 +645,365 @@ export default function Wizard({ onClose, draftId = null }) {
     }
   };
 
-  const wide = showChat;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 animate-fade-in">
-      <div className="absolute inset-0 bg-ink/45 backdrop-blur-[3px]" onClick={requestClose} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="wizard-title"
-        className={`relative z-10 flex h-[min(90vh,860px)] w-full flex-col overflow-hidden rounded-sheet border border-line bg-surface shadow-float transition-[filter] duration-soft ease-out ${
-          wide ? 'max-w-6xl' : 'max-w-5xl'
-        } ${cancelOpen ? 'pointer-events-none blur-[3px]' : ''}`}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
-          <div className="min-w-0">
-            <p className="type-overline">Onboarding</p>
-            <div id="wizard-title" className="font-display mt-1.5 text-title-md text-ink">Onboard Service Provider</div>
-            <div className="mt-1 text-sm text-ink-muted">
-              {phase === 'choose' || phase === 'confirm' || phase === 'extracting'
-                ? phase === 'confirm'
-                  ? 'Confirm the contract file before extraction'
-                  : 'Upload a contract or fill in the details manually'
-                : 'Guided setup based on the VISION onboarding process'}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {phase === 'steps' && (
-              <button
-                onClick={() => {
-                  if (chatOpen) {
-                    setChatOpen(false);
-                    return;
-                  }
-                  setChatOpen(true);
-                  setMessages([]);
-                  setChatError('');
-                  if (sectionNote) {
-                    setChatFocusKey(null);
-                    pushMessage('assistant', sectionNote);
-                  } else if (missingFields[0]) {
-                    setChatFocusKey(missingFields[0].key);
-                    pushMessage(
-                      'assistant',
-                      missingFields[0].question,
-                      missingFields.map((x) => x.label)
-                    );
-                  }
-                }}
-                className={`inline-flex items-center gap-1.5 rounded-control border px-2.5 py-1.5 text-xs font-medium interactive ${
-                  showChat
-                    ? 'border-brand/40 bg-brand-soft text-brand-ink'
-                    : 'border-line text-ink-muted hover:bg-elevated'
-                }`}
-              >
-                <Icon name="help" size={14} />
-                {showChat ? 'Hide assistant' : 'AI assistant'}
-                {missingFields.length > 0 && (
-                  <span className="mono rounded-control bg-warn-soft px-1.5 text-[10px] font-semibold text-warn">
-                    {missingFields.length}
-                  </span>
-                )}
-              </button>
-            )}
-            <button
-              onClick={requestClose}
-              className="rounded-control p-1.5 text-ink-faint interactive hover:bg-elevated"
-              aria-label="Close"
-            >
-              <Icon name="x" size={18} />
-            </button>
+    <section
+      aria-labelledby="wizard-title"
+      className="flex h-full min-h-0 flex-1 flex-col bg-surface animate-fade-up"
+    >
+      {/* Header */}
+      <header className="flex shrink-0 items-start justify-between gap-4 border-b border-line bg-surface px-6 py-5 sm:px-8">
+        <div className="min-w-0">
+          <p className="type-overline">Onboarding</p>
+          <h1 id="wizard-title" className="font-display mt-1.5 text-title-md text-ink">
+            Onboard Service Provider
+          </h1>
+          <div className="mt-1 text-sm text-ink-muted">
+            {phase === 'choose' || phase === 'confirm' || phase === 'extracting'
+              ? phase === 'confirm'
+                ? 'Confirm the contract file before extraction'
+                : 'Upload a contract or fill in the details manually'
+              : 'Guided setup based on the VISION onboarding process'}
           </div>
         </div>
-
-        {/* First screen: upload + fill manually together */}
-        {(phase === 'choose' || phase === 'extracting') && (
-          <>
-            <EntryChoice
-              onSelectFile={selectContractFile}
-              onManual={startManual}
-              extracting={phase === 'extracting'}
-              fileName={fileName}
-              onCancelExtraction={cancelExtraction}
-              extractionError={extractionError}
-              onRetry={() => handleContractFile(extractionFile.current)}
-            />
-            {phase === 'choose' && (
-              <div className="flex items-center justify-between border-t border-line bg-elevated/30 px-6 py-4">
-                <button
-                  onClick={requestClose}
-                  className="text-sm font-medium text-ink-muted interactive hover:text-ink"
-                >
-                  Cancel
-                </button>
-                <span className="text-xs text-ink-faint">Choose an option above to continue</span>
-              </div>
-            )}
-          </>
-        )}
-
-        {phase === 'confirm' && (
-          <FileConfirm
-            file={pendingFile}
-            onConfirm={() => handleContractFile(pendingFile)}
-            onChangeFile={changePendingFile}
-            onCancel={cancelPendingFile}
-          />
-        )}
-
-        {/* 8-step wizard (after upload or manual) */}
-        {phase === 'steps' && (
-          <>
-            <div className="relative flex min-h-0 flex-1">
-              {/* Step rail */}
-              <div className="hidden w-60 shrink-0 overflow-y-auto border-r border-line bg-elevated/70 px-3 py-4 md:block scroll-thin">
-                {fromContract && (
-                  <div className="mb-3 rounded-control border border-line bg-brand-soft px-3 py-2.5 text-[10px] text-brand-ink">
-                    <span className="font-semibold">From contract</span>
-                    <div className="mt-0.5 truncate text-brand">{fileName}</div>
-                  </div>
-                )}
-                {stepStatuses.map((s) => {
-                  const current = s.index === step;
-                  const done = s.complete && (visited[s.index] || s.index < step || !s.required);
-                  return (
-                    <button
-                      key={s.title}
-                      onClick={() => goto(s.index)}
-                      className={`mb-1 flex w-full items-start gap-3 rounded-control px-3 py-2.5 text-left transition ${
-                        current
-                          ? 'bg-surface shadow-raise'
-                          : s.highlight
-                            ? 'bg-warn-soft/50 hover:bg-warn-soft'
-                            : 'hover:bg-surface/70'
-                      }`}
-                    >
-                      <span
-                        className={`mono mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${
-                          done
-                            ? 'bg-success-soft text-success'
-                            : current
-                              ? 'bg-ink text-white'
-                              : s.highlight
-                                ? 'bg-warn-soft text-warn'
-                                : 'text-ink-faint'
-                        }`}
-                      >
-                        {done ? '✓' : String(s.index + 1).padStart(2, '0')}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span
-                          className={`block text-sm ${
-                            current ? 'font-semibold text-ink' : s.highlight ? 'font-medium text-ink-soft' : 'text-ink-muted'
-                          }`}
-                        >
-                          {s.title}
-                        </span>
-                        {s.required && (
-                          <span className={`mt-0.5 block text-[10px] font-medium uppercase tracking-wide ${
-                            done ? 'text-success' : 'text-warn'
-                          }`}>
-                            {done ? 'Complete' : 'Required'}
-                          </span>
-                        )}
-                        {!s.required && (
-                          <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-wide text-ink-faint">
-                            Optional
-                          </span>
-                        )}
-                      </span>
-                    </button>
+        <div className="flex items-center gap-2">
+          {phase === 'steps' && (
+            <button
+              type="button"
+              onClick={() => {
+                if (chatOpen) {
+                  setChatOpen(false);
+                  return;
+                }
+                setChatOpen(true);
+                setMessages([]);
+                setChatError('');
+                if (sectionNote) {
+                  setChatFocusKey(null);
+                  pushMessage('assistant', sectionNote);
+                } else if (missingFields[0]) {
+                  setChatFocusKey(missingFields[0].key);
+                  pushMessage(
+                    'assistant',
+                    missingFields[0].question,
+                    missingFields.map((x) => x.label)
                   );
-                })}
-              </div>
-
-              {/* Step body */}
-              <div className="min-w-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-7 scroll-thin">
-                <label className="mb-5 block md:hidden">
-                  <span className="type-overline mb-2 block">Onboarding step</span>
-                  <select
-                    className="field-input"
-                    value={step}
-                    onChange={(e) => goto(Number(e.target.value))}
-                  >
-                    {STEPS.map((item, i) => (
-                      <option key={item.title} value={i} disabled={!visited[i] && i > step}>
-                        {i + 1}. {item.title}
-                        {item.required ? (stepStatuses[i]?.complete ? ' ✓' : ' *') : ''}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="type-overline flex items-center gap-2">
-                  Step {step + 1} of 8
-                  {STEPS[step]?.required ? (
-                    <span className={`rounded-control px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                      stepComplete ? 'bg-success-soft text-success' : 'bg-warn-soft text-warn'
-                    }`}>
-                      {stepComplete ? 'Complete' : 'Required'}
-                    </span>
-                  ) : (
-                    <span className="rounded-control bg-elevated px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
-                      Optional
-                    </span>
-                  )}
-                </div>
-                <h2 className="font-display mt-2 text-title-lg text-ink">{STEPS[step].title}</h2>
-
-                {missingFields.length > 0 && step < 7 && (
-                  <div className="mt-3 flex items-start gap-2 rounded-panel border border-line bg-warn-soft px-3 py-2.5">
-                    <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-warn" />
-                    <div>
-                      <div className="text-sm font-semibold text-ink-soft">
-                        Missing required fields. Complete them here or use the AI assistant.
-                      </div>
-                      <div className="text-xs text-ink-muted">
-                        Still needed: {missingFields.map((x) => x.label).join(', ')}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {stepComplete && step < 7 && (
-                  <div className="mt-3 flex items-start gap-2 rounded-panel border border-success/25 bg-success-soft px-3 py-2.5">
-                    <Icon name="checkCircle" size={16} className="mt-0.5 shrink-0 text-success" />
-                    <div className="text-sm font-medium text-ink-soft">
-                      {sectionNote || 'This section looks good.'}
-                    </div>
-                  </div>
-                )}
-
-                {step === 0 && (
-                  <Step1 f={f} set={set} missingKeys={missingKeys} errors={showErrors ? validationErrors : {}} />
-                )}
-                {step === 1 && (
-                  <Step2 f={f} set={set} setNotif={setNotif} toggleServiceType={toggleServiceType} errors={showErrors ? validationErrors : {}} />
-                )}
-                {step === 2 && <Step3 f={f} set={set} />}
-                {step === 3 && <Step4 f={f} set={set} toggleSameAsBilling={toggleSameAsBilling} errors={showErrors ? validationErrors : {}} />}
-                {step === 4 && <Step5 f={f} setProduct={setProduct} errors={showErrors ? validationErrors : {}} />}
-                {step === 5 && (
-                  <Step6
-                    f={f}
-                    addRoute={addRoute}
-                    removeRoute={removeRoute}
-                    setRoute={setRoute}
-                    toggleRouteDay={toggleRouteDay}
-                    errors={showErrors ? validationErrors : {}}
-                  />
-                )}
-                {step === 6 && (
-                  <Step7
-                    f={f}
-                    addContact={addContact}
-                    removeContact={removeContact}
-                    setContact={setContact}
-                    errors={showErrors ? validationErrors : {}}
-                  />
-                )}
-                {step === 7 && (
-                  <Step8
-                    f={f}
-                    errors={validationErrors}
-                    issues={reviewIssues}
-                    onJump={(issue) => jumpToStep(issue.step, issue.key)}
-                    onOpenAssistant={() => {
-                      setChatOpen(true);
-                      setMessages([]);
-                      if (reviewIssues[0]) {
-                        setChatFocusKey(reviewIssues[0].key);
-                        pushMessage(
-                          'assistant',
-                          `I can help finish onboarding. ${reviewIssues[0].message} What value should we use?`,
-                          reviewIssues.map((x) => x.message.replace(/\.$/, ''))
-                        );
-                      } else {
-                        pushMessage('assistant', completeNoteForStep(7, true));
-                      }
-                    }}
-                  />
-                )}
-              </div>
-
-              {showChat && (
-                <div className="absolute inset-0 z-20 flex flex-col bg-surface md:static md:z-auto md:w-auto">
-                  <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 md:hidden">
-                    <p className="text-sm font-medium text-ink">AI assistant</p>
-                    <button
-                      type="button"
-                      className="rounded-control border border-line px-2.5 py-1.5 text-xs font-semibold text-ink interactive hover:bg-elevated"
-                      onClick={() => setChatOpen(false)}
-                    >
-                      Fill form manually
-                    </button>
-                  </div>
-                  <WizardChatbot
-                    variant="rail"
-                    missingFields={missingFields}
-                    focusedKey={chatFocusKey}
-                    messages={messages}
-                    onSend={handleChatSend}
-                    onClose={() => setChatOpen(false)}
-                    totalRequired={countRequiredChatFields(step, f, validationErrors) || missingFields.length || 1}
-                    completeNote={sectionNote}
-                    busy={chatBusy}
-                  />
-                  {chatError && (
-                    <div className="flex items-center justify-between gap-3 border-t border-line p-3 text-xs text-danger" role="alert">
-                      <span>{chatError}</span>
-                      <button type="button" className="font-semibold underline" onClick={() => handleChatSend(lastChatAnswer.current)}>Retry</button>
-                    </div>
-                  )}
-                </div>
+                }
+              }}
+              className={`inline-flex items-center gap-1.5 rounded-control border px-2.5 py-1.5 text-xs font-medium interactive ${
+                showChat
+                  ? 'border-brand/40 bg-brand-soft text-brand-ink'
+                  : 'border-line text-ink-muted hover:bg-elevated'
+              }`}
+            >
+              <Icon name="help" size={14} />
+              {showChat ? 'Hide assistant' : 'AI assistant'}
+              {missingFields.length > 0 && (
+                <span className="mono rounded-control bg-warn-soft px-1.5 text-[10px] font-semibold text-warn">
+                  {missingFields.length}
+                </span>
               )}
-            </div>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={requestClose}
+            className="rounded-control p-1.5 text-ink-faint interactive hover:bg-elevated"
+            aria-label="Leave onboarding"
+          >
+            <Icon name="x" size={18} />
+          </button>
+        </div>
+      </header>
 
-            {/* Footer */}
-            <div className="flex items-center justify-between border-t border-line bg-elevated/30 px-6 py-4">
+      {/* First screen: upload + fill manually together */}
+      {(phase === 'choose' || phase === 'extracting') && (
+        <>
+          <EntryChoice
+            onSelectFile={selectContractFile}
+            onManual={startManual}
+            extracting={phase === 'extracting'}
+            fileName={fileName}
+            onCancelExtraction={cancelExtraction}
+            extractionError={extractionError}
+            onRetry={() => handleContractFile(extractionFile.current)}
+          />
+          {phase === 'choose' && (
+            <div className="flex shrink-0 items-center justify-between border-t border-line bg-elevated/30 px-6 py-4 sm:px-8">
               <button
+                type="button"
                 onClick={requestClose}
                 className="text-sm font-medium text-ink-muted interactive hover:text-ink"
               >
                 Cancel
               </button>
-              <div className="flex items-center gap-2.5">
-                {step > 0 && (
-                  <button onClick={back} className="btn-secondary">
-                    <Icon name="chevronLeft" size={15} /> Back
+              <span className="text-xs text-ink-faint">Choose an option above to continue</span>
+            </div>
+          )}
+        </>
+      )}
+
+      {phase === 'confirm' && (
+        <FileConfirm
+          file={pendingFile}
+          onConfirm={() => handleContractFile(pendingFile)}
+          onChangeFile={changePendingFile}
+          onCancel={cancelPendingFile}
+        />
+      )}
+
+      {/* 8-step wizard (after upload or manual) */}
+      {phase === 'steps' && (
+        <>
+          <div className="relative flex min-h-0 flex-1">
+            {/* Step rail */}
+            <nav
+              aria-label="Onboarding steps"
+              className="hidden w-60 shrink-0 overflow-y-auto border-r border-line bg-elevated/70 px-3 py-4 md:block scroll-thin"
+            >
+              {fromContract && (
+                <div className="mb-3 rounded-control border border-line bg-brand-soft px-3 py-2.5 text-[10px] text-brand-ink">
+                  <span className="font-semibold">From contract</span>
+                  <div className="mt-0.5 truncate text-brand">{fileName}</div>
+                </div>
+              )}
+              {stepStatuses.map((s) => {
+                const current = s.index === step;
+                const done = s.complete && (visited[s.index] || s.index < step || !s.required);
+                return (
+                  <button
+                    key={s.title}
+                    type="button"
+                    onClick={() => goto(s.index)}
+                    className={`mb-1 flex w-full items-start gap-3 rounded-control px-3 py-2.5 text-left transition ${
+                      current
+                        ? 'bg-surface shadow-raise'
+                        : s.highlight
+                          ? 'bg-warn-soft/50 hover:bg-warn-soft'
+                          : 'hover:bg-surface/70'
+                    }`}
+                  >
+                    <span
+                      className={`mono mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${
+                        done
+                          ? 'bg-success-soft text-success'
+                          : current
+                            ? 'bg-ink text-white'
+                            : s.highlight
+                              ? 'bg-warn-soft text-warn'
+                              : 'text-ink-faint'
+                      }`}
+                    >
+                      {done ? '✓' : String(s.index + 1).padStart(2, '0')}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={`block text-sm ${
+                          current ? 'font-semibold text-ink' : s.highlight ? 'font-medium text-ink-soft' : 'text-ink-muted'
+                        }`}
+                      >
+                        {s.title}
+                      </span>
+                      {s.required && (
+                        <span className={`mt-0.5 block text-[10px] font-medium uppercase tracking-wide ${
+                          done ? 'text-success' : 'text-warn'
+                        }`}>
+                          {done ? 'Complete' : 'Required'}
+                        </span>
+                      )}
+                      {!s.required && (
+                        <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-wide text-ink-faint">
+                          Optional
+                        </span>
+                      )}
+                    </span>
                   </button>
-                )}
-                {step < 7 ? (
-                  <button onClick={next} disabled={!canNext} className="btn-primary">
-                    Next <Icon name="chevronRight" size={15} />
-                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Step body */}
+            <div className="min-w-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-7 scroll-thin">
+              <label className="mb-5 block md:hidden">
+                <span className="type-overline mb-2 block">Onboarding step</span>
+                <select
+                  className="field-input"
+                  value={step}
+                  onChange={(e) => goto(Number(e.target.value))}
+                >
+                  {STEPS.map((item, i) => (
+                    <option key={item.title} value={i} disabled={!visited[i] && i > step}>
+                      {i + 1}. {item.title}
+                      {item.required ? (stepStatuses[i]?.complete ? ' ✓' : ' *') : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="type-overline flex items-center gap-2">
+                Step {step + 1} of 8
+                {STEPS[step]?.required ? (
+                  <span className={`rounded-control px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                    stepComplete ? 'bg-success-soft text-success' : 'bg-warn-soft text-warn'
+                  }`}>
+                    {stepComplete ? 'Complete' : 'Required'}
+                  </span>
                 ) : (
-                  <button onClick={activate} disabled={!isValid} className="btn-brand disabled:cursor-not-allowed disabled:opacity-50">
-                    <Icon name="check" size={15} /> Activate
-                  </button>
+                  <span className="rounded-control bg-elevated px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
+                    Optional
+                  </span>
                 )}
               </div>
+              <h2 className="font-display mt-2 text-title-lg text-ink">{STEPS[step].title}</h2>
+
+              {missingFields.length > 0 && step < 7 && (
+                <div className="mt-3 flex items-start gap-2 rounded-panel border border-line bg-warn-soft px-3 py-2.5">
+                  <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-warn" />
+                  <div>
+                    <div className="text-sm font-semibold text-ink-soft">
+                      Missing required fields. Complete them here or use the AI assistant.
+                    </div>
+                    <div className="text-xs text-ink-muted">
+                      Still needed: {missingFields.map((x) => x.label).join(', ')}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {stepComplete && step < 7 && (
+                <div className="mt-3 flex items-start gap-2 rounded-panel border border-success/25 bg-success-soft px-3 py-2.5">
+                  <Icon name="checkCircle" size={16} className="mt-0.5 shrink-0 text-success" />
+                  <div className="text-sm font-medium text-ink-soft">
+                    {sectionNote || 'This section looks good.'}
+                  </div>
+                </div>
+              )}
+
+              {step === 0 && (
+                <Step1 f={f} set={set} missingKeys={missingKeys} errors={showErrors ? validationErrors : {}} />
+              )}
+              {step === 1 && (
+                <Step2 f={f} set={set} setNotif={setNotif} toggleServiceType={toggleServiceType} errors={showErrors ? validationErrors : {}} />
+              )}
+              {step === 2 && <Step3 f={f} set={set} />}
+              {step === 3 && <Step4 f={f} set={set} toggleSameAsBilling={toggleSameAsBilling} errors={showErrors ? validationErrors : {}} />}
+              {step === 4 && <Step5 f={f} setProduct={setProduct} errors={showErrors ? validationErrors : {}} />}
+              {step === 5 && (
+                <Step6
+                  f={f}
+                  addRoute={addRoute}
+                  removeRoute={removeRoute}
+                  setRoute={setRoute}
+                  toggleRouteDay={toggleRouteDay}
+                  errors={showErrors ? validationErrors : {}}
+                />
+              )}
+              {step === 6 && (
+                <Step7
+                  f={f}
+                  addContact={addContact}
+                  removeContact={removeContact}
+                  setContact={setContact}
+                  errors={showErrors ? validationErrors : {}}
+                />
+              )}
+              {step === 7 && (
+                <Step8
+                  f={f}
+                  errors={validationErrors}
+                  issues={reviewIssues}
+                  onJump={(issue) => jumpToStep(issue.step, issue.key)}
+                  onOpenAssistant={() => {
+                    setChatOpen(true);
+                    setMessages([]);
+                    if (reviewIssues[0]) {
+                      setChatFocusKey(reviewIssues[0].key);
+                      pushMessage(
+                        'assistant',
+                        `I can help finish onboarding. ${reviewIssues[0].message} What value should we use?`,
+                        reviewIssues.map((x) => x.message.replace(/\.$/, ''))
+                      );
+                    } else {
+                      pushMessage('assistant', completeNoteForStep(7, true));
+                    }
+                  }}
+                />
+              )}
             </div>
-          </>
-        )}
-      </div>
+
+            {showChat && (
+              <div className="absolute inset-0 z-20 flex flex-col bg-surface md:static md:z-auto md:w-80 lg:w-96 md:border-l md:border-line">
+                <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 md:hidden">
+                  <p className="text-sm font-medium text-ink">AI assistant</p>
+                  <button
+                    type="button"
+                    className="rounded-control border border-line px-2.5 py-1.5 text-xs font-semibold text-ink interactive hover:bg-elevated"
+                    onClick={() => setChatOpen(false)}
+                  >
+                    Fill form manually
+                  </button>
+                </div>
+                <WizardChatbot
+                  variant="rail"
+                  missingFields={missingFields}
+                  focusedKey={chatFocusKey}
+                  messages={messages}
+                  onSend={handleChatSend}
+                  onClose={() => setChatOpen(false)}
+                  totalRequired={countRequiredChatFields(step, f, validationErrors) || missingFields.length || 1}
+                  completeNote={sectionNote}
+                  busy={chatBusy}
+                />
+                {chatError && (
+                  <div className="flex items-center justify-between gap-3 border-t border-line p-3 text-xs text-danger" role="alert">
+                    <span>{chatError}</span>
+                    <button type="button" className="font-semibold underline" onClick={() => handleChatSend(lastChatAnswer.current)}>Retry</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Sticky actions */}
+          <div className="flex shrink-0 items-center justify-between border-t border-line bg-elevated/30 px-6 py-4 sm:px-8">
+            <button
+              type="button"
+              onClick={requestClose}
+              className="text-sm font-medium text-ink-muted interactive hover:text-ink"
+            >
+              Cancel
+            </button>
+            <div className="flex items-center gap-2.5">
+              {step > 0 && (
+                <button type="button" onClick={back} className="btn-secondary">
+                  <Icon name="chevronLeft" size={15} /> Back
+                </button>
+              )}
+              {step < 7 ? (
+                <button type="button" onClick={next} disabled={!canNext} className="btn-primary">
+                  Next <Icon name="chevronRight" size={15} />
+                </button>
+              ) : (
+                <button type="button" onClick={activate} disabled={!isValid} className="btn-brand disabled:cursor-not-allowed disabled:opacity-50">
+                  <Icon name="check" size={15} /> Activate
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {cancelOpen && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center p-4 animate-fade-in">
-          <button
-            type="button"
-            aria-label="Dismiss"
-            className="absolute inset-0 cursor-default bg-transparent"
-            onClick={() => setCancelOpen(false)}
-          />
-          <div role="alertdialog" aria-modal="true" aria-labelledby="discard-title" aria-describedby="discard-description" className="relative z-10 w-full max-w-md rounded-sheet border border-line bg-surface p-6 shadow-float animate-fade-up">
-            <p className="type-overline">Leave onboarding?</p>
-            <h3 id="discard-title" className="font-display mt-2 text-title-md text-ink">Discard entered data?</h3>
-            <p id="discard-description" className="mt-2 text-sm leading-relaxed text-ink-muted">
-              All entered data will be lost unless you save a draft. Drafts appear below active
-              providers in the directory.
-            </p>
-            {draftError && <p className="mt-3 text-sm text-danger" role="alert">{draftError}</p>}
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Dialog
+          title="Discard entered data?"
+          description="All entered data will be lost unless you save a draft. Drafts appear below active providers in the directory."
+          onClose={() => setCancelOpen(false)}
+        >
+          <div className="px-6 py-4">
+            <p className="type-overline mb-3">Leave onboarding?</p>
+            {draftError && (
+              <p className="mb-3 text-sm text-danger" role="alert">
+                {draftError}
+              </p>
+            )}
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setCancelOpen(false)} className="btn-secondary">
                 Keep editing
               </button>
@@ -1018,9 +1015,9 @@ export default function Wizard({ onClose, draftId = null }) {
               </button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
-    </div>
+    </section>
   );
 }
 

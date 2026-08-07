@@ -95,6 +95,7 @@ export const ROLE_MODULES = {
     'productTypes',
     'apiIntegrations',
     'notificationConfig',
+    'onboarding',
     'contractOnboarding',
     'setup',
   ],
@@ -151,7 +152,7 @@ export const ROLE_MODULES = {
 
   'sp:Analyst': ['home', 'account', 'aggregatedTips', 'individualTips', 'analytics'],
 
-  'customer:Portal User': ['myLocations', 'myWorkOrders', 'myNotifications', 'myAccount'],
+  'customer:Portal User': ['home', 'myLocations', 'myWorkOrders', 'myNotifications', 'myAccount'],
 };
 
 /** Account-detail tabs each SP role may open */

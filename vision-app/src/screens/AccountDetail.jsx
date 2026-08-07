@@ -10,7 +10,8 @@ import {
   Page,
   Panel,
   Button,
-  Dialog,
+  FormDrawer,
+  FieldSection,
   Field,
   TextInput,
   Select,
@@ -288,10 +289,8 @@ function DetailsTab({ account }) {
   );
 }
 
-function EditProviderDialog({ account, onClose, onSaved }) {
-  const { toast } = useStore();
-  const updateAccount = useUpdateAccount();
-  const [form, setForm] = useState(() => ({
+function providerFormValues(account) {
+  return {
     name: account.name || '',
     uid: account.uid || '',
     industry: account.industry || '',
@@ -310,7 +309,13 @@ function EditProviderDialog({ account, onClose, onSaved }) {
     billingState: account.billing?.state || '',
     billingZip: account.billing?.zip || '',
     billingCountry: account.billing?.country || '',
-  }));
+  };
+}
+
+function EditProviderDialog({ account, onClose, onSaved }) {
+  const { toast } = useStore();
+  const updateAccount = useUpdateAccount();
+  const [form, setForm] = useState(() => providerFormValues(account));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -366,16 +371,18 @@ function EditProviderDialog({ account, onClose, onSaved }) {
   };
 
   return (
-    <Dialog
+    <FormDrawer
       onClose={onClose}
+      onSubmit={save}
       title="Edit service provider"
       description={account.name}
       wide
-      className="h-[min(90vh,720px)]"
+      dirty={JSON.stringify(form) !== JSON.stringify(providerFormValues(account))}
+      busy={busy}
+      error={error}
+      submitLabel="Save changes"
     >
-      <form onSubmit={save} className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5 scroll-thin">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <FieldSection title="Provider information">
             <Field label="Account name" required>
               <TextInput value={form.name} onChange={(e) => set({ name: e.target.value })} />
             </Field>
@@ -429,6 +436,8 @@ function EditProviderDialog({ account, onClose, onSaved }) {
                 onChange={(e) => set({ description: e.target.value })}
               />
             </Field>
+      </FieldSection>
+      <FieldSection title="Billing address" className="border-t border-line pt-5">
             <Field label="Billing street" span2>
               <TextInput
                 value={form.billingStreet}
@@ -459,28 +468,13 @@ function EditProviderDialog({ account, onClose, onSaved }) {
                 onChange={(e) => set({ billingCountry: e.target.value })}
               />
             </Field>
-          </div>
-          <Checkbox
-            label="Mark inactive"
-            checked={form.inactive}
-            onChange={(e) => set({ inactive: e.target.checked })}
-          />
-          {error && (
-            <p className="text-sm text-danger" role="alert">
-              {error}
-            </p>
-          )}
-        </div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-line bg-surface px-6 py-4">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary" disabled={busy}>
-            {busy ? 'Saving…' : 'Save changes'}
-          </Button>
-        </div>
-      </form>
-    </Dialog>
+      </FieldSection>
+      <Checkbox
+        label="Mark inactive"
+        checked={form.inactive}
+        onChange={(e) => set({ inactive: e.target.checked })}
+      />
+    </FormDrawer>
   );
 }
 
@@ -553,12 +547,8 @@ function ContactsTab({ accountId, contacts, canEdit, onChanged }) {
   );
 }
 
-function ContactEditorDialog({ accountId, contact, onClose, onSaved }) {
-  const { toast } = useStore();
-  const createContact = useCreateContact();
-  const updateContact = useUpdateContact();
-  const isNew = !contact;
-  const [form, setForm] = useState(() => ({
+function contactFormValues(contact) {
+  return {
     firstName: contact?.firstName || '',
     lastName: contact?.lastName || '',
     email: contact?.email || '',
@@ -566,20 +556,20 @@ function ContactEditorDialog({ accountId, contact, onClose, onSaved }) {
     role: contact?.roleTitle || contact?.role || PICKLISTS.wizardRole[0],
     segment: contact?.segment || '',
     portal: !!(contact?.isUserCreated && contact?.isUserActive) || !!contact?.portal,
-  }));
+  };
+}
+
+function ContactEditorDialog({ accountId, contact, onClose, onSaved }) {
+  const { toast } = useStore();
+  const createContact = useCreateContact();
+  const updateContact = useUpdateContact();
+  const isNew = !contact;
+  const [form, setForm] = useState(() => contactFormValues(contact));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setForm({
-      firstName: contact?.firstName || '',
-      lastName: contact?.lastName || '',
-      email: contact?.email || '',
-      title: contact?.title || '',
-      role: contact?.roleTitle || contact?.role || PICKLISTS.wizardRole[0],
-      segment: contact?.segment || '',
-      portal: !!(contact?.isUserCreated && contact?.isUserActive) || !!contact?.portal,
-    });
+    setForm(contactFormValues(contact));
   }, [contact]);
 
   const set = (patch) => setForm((prev) => ({ ...prev, ...patch }));
@@ -622,13 +612,17 @@ function ContactEditorDialog({ accountId, contact, onClose, onSaved }) {
   };
 
   return (
-    <Dialog
+    <FormDrawer
       onClose={onClose}
+      onSubmit={save}
       title={isNew ? 'Add contact' : 'Edit contact'}
       description="Contact details for this service provider"
+      dirty={JSON.stringify(form) !== JSON.stringify(contactFormValues(contact))}
+      busy={busy}
+      error={error}
+      submitLabel={isNew ? 'Add contact' : 'Save contact'}
     >
-      <form onSubmit={save} className="space-y-4 overflow-y-auto px-6 py-5 scroll-thin">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <FieldSection title="Contact details">
           <Field label="First name" required>
             <TextInput value={form.firstName} onChange={(e) => set({ firstName: e.target.value })} />
           </Field>
@@ -655,27 +649,13 @@ function ContactEditorDialog({ accountId, contact, onClose, onSaved }) {
           <Field label="Segment" span2>
             <TextInput value={form.segment} onChange={(e) => set({ segment: e.target.value })} />
           </Field>
-        </div>
-        <Checkbox
-          label="Enable as portal user"
-          checked={form.portal}
-          onChange={(e) => set({ portal: e.target.checked })}
-        />
-        {error && (
-          <p className="text-sm text-danger" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="flex justify-end gap-2 border-t border-line pt-4">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary" disabled={busy}>
-            {busy ? 'Saving…' : isNew ? 'Add contact' : 'Save contact'}
-          </Button>
-        </div>
-      </form>
-    </Dialog>
+      </FieldSection>
+      <Checkbox
+        label="Enable as portal user"
+        checked={form.portal}
+        onChange={(e) => set({ portal: e.target.checked })}
+      />
+    </FormDrawer>
   );
 }
 

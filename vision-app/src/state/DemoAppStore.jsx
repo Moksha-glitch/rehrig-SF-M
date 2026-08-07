@@ -17,10 +17,7 @@ import { AppStoreContext } from './storeContext.js';
 
 const initialState = { ...appRepository.load(), nav: readNavigation() };
 
-function homeModuleFor(user) {
-  if (user.persona === 'customer') return 'myLocations';
-  if (user.persona === 'sp' && user.role === 'Field Tech') return 'workOrders';
-  if (user.persona === 'sp' && user.role === 'Analyst') return 'analytics';
+function homeModuleFor() {
   return 'home';
 }
 
@@ -29,7 +26,7 @@ function reducer(state, action) {
     case 'LOGIN':
       return { ...state, currentUser: action.user, nav: action.nav };
     case 'LOGOUT':
-      return { ...state, currentUser: null, nav: { module: 'home', params: {} } };
+      return { ...state, currentUser: null, nav: { module: 'home', params: {} }, assistantOpen: false };
     case 'SET_THEME':
       return { ...state, theme: action.theme };
     case 'NAVIGATE':
@@ -71,6 +68,8 @@ function reducer(state, action) {
       return { ...state, toast: action.message };
     case 'CLEAR_TOAST':
       return { ...state, toast: null };
+    case 'SET_ASSISTANT_OPEN':
+      return { ...state, assistantOpen: !!action.open };
     case 'MARK_NOTIFICATION':
       return {
         ...state,
@@ -142,6 +141,30 @@ function reducer(state, action) {
           r.id === action.id ? { ...r, enabled: !r.enabled } : r
         ),
       };
+    case 'ADD_API_INTEGRATION':
+      return {
+        ...state,
+        apiIntegrations: [action.item, ...(state.apiIntegrations || [])],
+      };
+    case 'UPDATE_API_INTEGRATION':
+      return {
+        ...state,
+        apiIntegrations: (state.apiIntegrations || []).map((item) =>
+          item.id === action.id ? { ...item, ...action.changes } : item
+        ),
+      };
+    case 'ADD_NOTIFICATION_RULE':
+      return {
+        ...state,
+        notificationConfig: [action.item, ...(state.notificationConfig || [])],
+      };
+    case 'UPDATE_NOTIFICATION_RULE':
+      return {
+        ...state,
+        notificationConfig: (state.notificationConfig || []).map((item) =>
+          item.id === action.id ? { ...item, ...action.changes } : item
+        ),
+      };
     case 'DELETE_CONFIG': {
       const list = state.config[action.list].filter((x) => x.id !== action.id);
       return { ...state, config: { ...state.config, [action.list]: list } };
@@ -150,6 +173,44 @@ function reducer(state, action) {
       const list = [action.item, ...state.config[action.list]];
       return { ...state, config: { ...state.config, [action.list]: list } };
     }
+    case 'UPSERT_REPORT_SPEC': {
+      const specs = state.reportSpecs || [];
+      const exists = specs.some((r) => r.id === action.item.id);
+      return {
+        ...state,
+        reportSpecs: exists
+          ? specs.map((r) => (r.id === action.item.id ? action.item : r))
+          : [action.item, ...specs],
+      };
+    }
+    case 'DELETE_REPORT_SPEC':
+      return {
+        ...state,
+        reportSpecs: (state.reportSpecs || []).filter((r) => r.id !== action.id),
+      };
+    case 'UPSERT_APP_LICENSE': {
+      const licenses = state.appLicenses || [];
+      const exists = licenses.some((r) => r.id === action.item.id);
+      return {
+        ...state,
+        appLicenses: exists
+          ? licenses.map((r) => (r.id === action.item.id ? { ...r, ...action.item } : r))
+          : [action.item, ...licenses],
+      };
+    }
+    case 'UPDATE_WORKSPACE_SETTINGS':
+      return {
+        ...state,
+        workspaceSettings: { ...(state.workspaceSettings || {}), ...action.changes },
+      };
+    case 'SAVE_IMPORT_MAPPING':
+      return {
+        ...state,
+        importMappings: {
+          ...(state.importMappings || {}),
+          [action.objectKey]: action.mapping,
+        },
+      };
     case 'RESET':
       return action.state;
     default:
@@ -211,6 +272,19 @@ export function DemoAppStoreProvider({ children }) {
     writeNavigation(nav, options);
   }, []);
 
+  const openAssistant = useCallback(
+    () => dispatch({ type: 'SET_ASSISTANT_OPEN', open: true }),
+    []
+  );
+  const closeAssistant = useCallback(
+    () => dispatch({ type: 'SET_ASSISTANT_OPEN', open: false }),
+    []
+  );
+  const toggleAssistant = useCallback(
+    () => dispatch({ type: 'SET_ASSISTANT_OPEN', open: !state.assistantOpen }),
+    [state.assistantOpen]
+  );
+
   const addAccount = useCallback(
     (account, fromDraftId = null) => dispatch({ type: 'ADD_ACCOUNT', account, fromDraftId }),
     []
@@ -241,8 +315,74 @@ export function DemoAppStoreProvider({ children }) {
   }, []);
 
   const toggleNotifRule = useCallback((id) => dispatch({ type: 'TOGGLE_NOTIF_RULE', id }), []);
+  const addApiIntegration = useCallback((item) => {
+    const next = {
+      id: item.id || `api-${Date.now().toString(36)}`,
+      name: (item.name || '').trim(),
+      description: (item.description || '').trim(),
+      endpoint: (item.endpoint || '/api/v1/workorder').trim(),
+      status: item.status || 'Active',
+      calls30d: Number.isFinite(Number(item.calls30d)) ? Number(item.calls30d) : 0,
+    };
+    dispatch({ type: 'ADD_API_INTEGRATION', item: next });
+    return next;
+  }, []);
+  const updateApiIntegration = useCallback((id, changes) => {
+    dispatch({ type: 'UPDATE_API_INTEGRATION', id, changes });
+    return { id, ...changes };
+  }, []);
+  const addNotificationRule = useCallback((item) => {
+    const next = {
+      id: item.id || `nc-${Date.now().toString(36)}`,
+      name: (item.name || '').trim(),
+      description: (item.description || '').trim(),
+      enabled: item.enabled !== false,
+      event: item.event || 'work_order.missed_pickup',
+      channel: item.channel || 'SMS',
+      priority: item.priority || 'Normal',
+    };
+    dispatch({ type: 'ADD_NOTIFICATION_RULE', item: next });
+    return next;
+  }, []);
+  const updateNotificationRule = useCallback((id, changes) => {
+    dispatch({ type: 'UPDATE_NOTIFICATION_RULE', id, changes });
+    return { id, ...changes };
+  }, []);
   const deleteConfig = useCallback((list, id) => dispatch({ type: 'DELETE_CONFIG', list, id }), []);
   const addConfig = useCallback((list, item) => dispatch({ type: 'ADD_CONFIG', list, item }), []);
+  const upsertReportSpec = useCallback((item) => {
+    const next = {
+      ...item,
+      id: item.id || `rpt-${Date.now().toString(36)}`,
+      name: (item.name || 'Untitled report').trim() || 'Untitled report',
+      limit: Math.max(1, Math.min(100, Number(item.limit) || 20)),
+    };
+    dispatch({ type: 'UPSERT_REPORT_SPEC', item: next });
+    return next;
+  }, []);
+  const deleteReportSpec = useCallback((id) => {
+    dispatch({ type: 'DELETE_REPORT_SPEC', id });
+    return { id };
+  }, []);
+  const upsertAppLicense = useCallback((item) => {
+    const next = {
+      ...item,
+      id: item.id || `lic-${Date.now().toString(36)}`,
+      productName: (item.productName || '').trim(),
+      seats: Number(item.seats) || 0,
+      assigned: Number(item.assigned) || 0,
+    };
+    dispatch({ type: 'UPSERT_APP_LICENSE', item: next });
+    return next;
+  }, []);
+  const updateWorkspaceSettings = useCallback((changes) => {
+    dispatch({ type: 'UPDATE_WORKSPACE_SETTINGS', changes });
+    return changes;
+  }, []);
+  const saveImportMapping = useCallback((objectKey, mapping) => {
+    dispatch({ type: 'SAVE_IMPORT_MAPPING', objectKey, mapping });
+    return mapping;
+  }, []);
   const markNotificationRead = useCallback(
     (id) => dispatch({ type: 'MARK_NOTIFICATION', id }),
     []
@@ -447,14 +587,27 @@ export function DemoAppStoreProvider({ children }) {
     logout,
     setTheme,
     navigate,
+    assistantOpen: !!state.assistantOpen,
+    openAssistant,
+    closeAssistant,
+    toggleAssistant,
     addAccount,
     updateAccount,
     saveDraft,
     deleteDraft,
     toast,
     toggleNotifRule,
+    addApiIntegration,
+    updateApiIntegration,
+    addNotificationRule,
+    updateNotificationRule,
     deleteConfig,
     addConfig,
+    upsertReportSpec,
+    deleteReportSpec,
+    upsertAppLicense,
+    updateWorkspaceSettings,
+    saveImportMapping,
     markNotificationRead,
     markAllNotificationsRead,
     resetToSeed,

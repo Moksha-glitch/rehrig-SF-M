@@ -20,10 +20,7 @@ import { useAuth } from './authContextBase.js';
 import { THEME_KEY } from '../utils/appRepository.js';
 import { AppStoreContext } from './storeContext.js';
 
-function homeModuleFor(user) {
-  if (user.persona === 'customer') return 'myLocations';
-  if (user.persona === 'sp' && user.role === 'Field Tech') return 'workOrders';
-  if (user.persona === 'sp' && user.role === 'Analyst') return 'analytics';
+function homeModuleFor() {
   return 'home';
 }
 
@@ -39,6 +36,7 @@ const initialUi = {
   theme: typeof window !== 'undefined' ? readTheme() : 'light',
   nav: typeof window !== 'undefined' ? readNavigation() : { module: 'home', params: {} },
   toast: null,
+  assistantOpen: false,
 };
 
 function reducer(state, action) {
@@ -51,6 +49,8 @@ function reducer(state, action) {
       return { ...state, toast: action.message };
     case 'CLEAR_TOAST':
       return { ...state, toast: null };
+    case 'SET_ASSISTANT_OPEN':
+      return { ...state, assistantOpen: !!action.open };
     default:
       return state;
   }
@@ -109,6 +109,19 @@ export function ApiAppStoreProvider({ children }) {
     writeNavigation(nav, options);
   }, []);
 
+  const openAssistant = useCallback(
+    () => dispatch({ type: 'SET_ASSISTANT_OPEN', open: true }),
+    []
+  );
+  const closeAssistant = useCallback(
+    () => dispatch({ type: 'SET_ASSISTANT_OPEN', open: false }),
+    []
+  );
+  const toggleAssistant = useCallback(
+    () => dispatch({ type: 'SET_ASSISTANT_OPEN', open: !ui.assistantOpen }),
+    [ui.assistantOpen]
+  );
+
   const toast = useCallback((message, severity = 'success', options = {}) => {
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
     const payload =
@@ -124,6 +137,7 @@ export function ApiAppStoreProvider({ children }) {
 
   const logout = useCallback(async () => {
     await authLogout();
+    dispatch({ type: 'SET_ASSISTANT_OPEN', open: false });
     dispatch({ type: 'NAVIGATE', module: 'home', params: {} });
     writeNavigation({ module: 'home', params: {} }, { replace: true });
   }, [authLogout]);
@@ -151,6 +165,7 @@ export function ApiAppStoreProvider({ children }) {
       theme: ui.theme,
       nav: ui.nav,
       toast: ui.toast,
+      assistantOpen: ui.assistantOpen,
     }),
     [user, ui]
   );
@@ -161,6 +176,10 @@ export function ApiAppStoreProvider({ children }) {
     setTheme,
     toast,
     logout,
+    assistantOpen: !!ui.assistantOpen,
+    openAssistant,
+    closeAssistant,
+    toggleAssistant,
     persona,
     allowedModules,
     canAccessModule,

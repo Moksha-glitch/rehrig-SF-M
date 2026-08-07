@@ -13,6 +13,8 @@ import {
   USERS,
 } from '../data/seed.js';
 import { RECORD_SCHEMAS } from '../data/recordSchemas.js';
+import { DEFAULT_WORKSPACE_SETTINGS, SEED_APP_LICENSES } from '../data/appLauncher.js';
+import { SEED_REPORT_SPECS } from '../data/reportStudio.js';
 
 export const STORAGE_VERSION = 1;
 export const STORAGE_KEY = `vision.demo.v${STORAGE_VERSION}`;
@@ -107,14 +109,19 @@ export function createSeedState() {
       assetTypes: clone(CONFIG_ASSET_TYPES),
       productTypes: clone(CONFIG_PRODUCT_TYPES),
     },
+    reportSpecs: clone(SEED_REPORT_SPECS),
+    appLicenses: clone(SEED_APP_LICENSES),
+    workspaceSettings: clone(DEFAULT_WORKSPACE_SETTINGS),
+    importMappings: {},
     nav: { module: 'home', params: {} },
     toast: null,
+    assistantOpen: false,
     drafts: [],
   };
 }
 
 function persistedState(state) {
-  const { toast: _toast, currentUser, ...rest } = state;
+  const { toast: _toast, assistantOpen: _assistantOpen, currentUser, ...rest } = state;
   const remember = readRememberPreference();
   return {
     ...rest,
@@ -149,7 +156,15 @@ export const appRepository = {
           ...seed.operationalRecords,
           ...(saved.operationalRecords || {}),
         },
+        reportSpecs: Array.isArray(saved.reportSpecs) ? saved.reportSpecs : seed.reportSpecs,
+        appLicenses: Array.isArray(saved.appLicenses) ? saved.appLicenses : seed.appLicenses,
+        workspaceSettings: {
+          ...seed.workspaceSettings,
+          ...(saved.workspaceSettings || {}),
+        },
+        importMappings: { ...seed.importMappings, ...(saved.importMappings || {}) },
         toast: null,
+        assistantOpen: false,
       };
     } catch {
       return seed;

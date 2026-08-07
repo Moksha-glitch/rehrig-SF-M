@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 
@@ -62,20 +62,34 @@ export function Stat({ label, value, hint, icon, tint = 'bg-elevated text-ink-so
 }
 
 /** Compact KPI strip used on home / registry dashboards */
-export function StatStrip({ items }) {
+export function StatStrip({ items, compact = false }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {items.map((k, i) => (
         <div
           key={k.label}
-          className="surface-panel surface-panel-hover animate-fade-up p-5"
+          className={`surface-panel surface-panel-hover animate-fade-up ${
+            compact ? 'bg-elevated/55 p-3.5' : 'p-5'
+          }`}
           style={{ animationDelay: `${i * 45}ms` }}
         >
           <p className="type-overline">{k.label}</p>
-          <p className="font-display mt-3 text-[1.85rem] font-semibold tracking-tight text-ink tabular-nums leading-none">
+          <p
+            className={`font-display font-semibold tracking-tight text-ink tabular-nums leading-none ${
+              compact ? 'mt-2 text-[1.3rem]' : 'mt-3 text-[1.85rem]'
+            }`}
+          >
             {k.value}
           </p>
-          {k.hint && <p className="mt-2 text-xs leading-relaxed text-ink-muted">{k.hint}</p>}
+          {k.hint && (
+            <p
+              className={`leading-relaxed text-ink-muted ${
+                compact ? 'mt-1 text-[11px]' : 'mt-2 text-xs'
+              }`}
+            >
+              {k.hint}
+            </p>
+          )}
         </div>
       ))}
     </div>
@@ -268,22 +282,38 @@ export function Select({ options = [], className = '', placeholder, ...rest }) {
   return (
     <select className={`${inputBase} ${className}`} {...rest}>
       {placeholder && <option value="">{placeholder}</option>}
-      {options.map((o) => (
-        <option key={o} value={o}>
-          {o}
-        </option>
-      ))}
+      {options.map((o) => {
+        if (o && typeof o === 'object') {
+          const value = o.value ?? o.k ?? '';
+          const label = o.label ?? o.l ?? value;
+          return (
+            <option key={String(value)} value={value}>
+              {label}
+            </option>
+          );
+        }
+        return (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        );
+      })}
     </select>
   );
 }
 
-export function Checkbox({ label, checked, onChange, className = '' }) {
+export function Checkbox({ label, checked, onChange, className = '', disabled = false }) {
   return (
-    <label className={`inline-flex cursor-pointer items-center gap-2 text-sm text-ink-soft ${className}`}>
+    <label
+      className={`inline-flex items-center gap-2 text-sm text-ink-soft ${
+        disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+      } ${className}`}
+    >
       <input
         type="checkbox"
         checked={!!checked}
         onChange={onChange}
+        disabled={disabled}
         className="h-4 w-4 rounded border-line-strong text-brand focus:ring-brand/30"
       />
       {label}
@@ -391,6 +421,32 @@ export function Table({ columns, children, className = '', caption, label }) {
   );
 }
 
+/**
+ * Overlay stack so nested overlays (e.g. a confirm dialog above a form drawer)
+ * only let the topmost one react to Escape and Tab.
+ */
+const overlayStack = [];
+
+/** True while a Dialog/Drawer is mounted, so page chrome can ignore Escape. */
+export function hasOpenOverlay() {
+  return overlayStack.length > 0;
+}
+
+function useOverlayLayer(active) {
+  const tokenRef = useRef(null);
+  if (!tokenRef.current) tokenRef.current = {};
+  useEffect(() => {
+    if (!active) return undefined;
+    const token = tokenRef.current;
+    overlayStack.push(token);
+    return () => {
+      const index = overlayStack.indexOf(token);
+      if (index >= 0) overlayStack.splice(index, 1);
+    };
+  }, [active]);
+  return useCallback(() => overlayStack[overlayStack.length - 1] === tokenRef.current, []);
+}
+
 export function Dialog({
   children,
   onClose,
@@ -403,6 +459,7 @@ export function Dialog({
   const onCloseRef = useRef(onClose);
   const titleId = useId();
   const descriptionId = useId();
+  const isTopLayer = useOverlayLayer(true);
   onCloseRef.current = onClose;
 
   useEffect(() => {
@@ -416,6 +473,7 @@ export function Dialog({
     (focusable || dialog)?.focus();
 
     const onKeyDown = (event) => {
+      if (!isTopLayer()) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         onCloseRef.current?.();
@@ -441,7 +499,7 @@ export function Dialog({
       document.body.style.overflow = previousOverflow;
       previouslyFocused?.focus?.();
     };
-  }, []);
+  }, [isTopLayer]);
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 animate-fade-in">
@@ -515,6 +573,229 @@ export function ConfirmDialog({
         </Button>
       </div>
     </Dialog>
+  );
+}
+
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Right-side accessible drawer. Mirrors Dialog a11y: portal, backdrop, focus trap, Escape, scroll lock, focus restore. */
+export function Drawer({
+  children,
+  onClose,
+  open = true,
+  wide = false,
+  title,
+  description,
+  footer,
+  className = '',
+}) {
+  const panelRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  const titleId = useId();
+  const descriptionId = useId();
+  const isTopLayer = useOverlayLayer(open);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const previouslyFocused = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const panel = panelRef.current;
+    const focusable = panel?.querySelector(FOCUSABLE_SELECTOR);
+    (focusable || panel)?.focus();
+
+    const onKeyDown = (event) => {
+      if (!isTopLayer()) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current?.();
+        return;
+      }
+      if (event.key !== 'Tab' || !panel) return;
+      const items = [...panel.querySelectorAll(FOCUSABLE_SELECTOR)];
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus?.();
+    };
+  }, [open, isTopLayer]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex justify-end animate-fade-in">
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default bg-ink/45 backdrop-blur-[3px]"
+        onClick={onClose}
+        aria-label="Close drawer"
+        tabIndex={-1}
+      />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-describedby={description ? descriptionId : undefined}
+        aria-label={title ? undefined : 'Drawer'}
+        tabIndex={-1}
+        className={`relative z-10 flex h-full w-full flex-col overflow-hidden border-l border-line bg-surface shadow-float animate-fade-up ${
+          wide ? 'sm:max-w-2xl lg:max-w-3xl' : 'sm:max-w-md md:max-w-lg'
+        } ${className}`}
+      >
+        {(title || description) && (
+          <div className="shrink-0 border-b border-line px-6 py-5">
+            {title && (
+              <h2 id={titleId} className="font-display text-title-md text-ink">
+                {title}
+              </h2>
+            )}
+            {description && (
+              <p id={descriptionId} className="mt-1 text-sm text-ink-muted">
+                {description}
+              </p>
+            )}
+          </div>
+        )}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+        {footer != null && footer !== false && (
+          <div className="shrink-0 border-t border-line bg-surface">{footer}</div>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/** Sticky action bar for drawer footers (also usable inside FormDrawer custom footers). */
+export function DrawerActions({ children, className = '' }) {
+  return (
+    <div className={`flex shrink-0 flex-wrap items-center justify-end gap-2.5 px-6 py-4 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/** Grouped field block inside drawer/form bodies. */
+export function FieldSection({ title, description, children, className = '' }) {
+  return (
+    <section className={`space-y-3 ${className}`}>
+      {(title || description) && (
+        <div>
+          {title && <h3 className="font-display text-title-sm text-ink">{title}</h3>}
+          {description && <p className="mt-1 text-sm text-ink-muted">{description}</p>}
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
+    </section>
+  );
+}
+
+/**
+ * Form-oriented right drawer with sticky header/footer, scrollable body,
+ * optional dirty-close confirmation, and shared cancel/save actions.
+ */
+export function FormDrawer({
+  open = true,
+  onClose,
+  onSubmit,
+  title,
+  description,
+  wide = false,
+  children,
+  footer,
+  dirty = false,
+  busy = false,
+  error,
+  submitLabel = 'Save',
+  cancelLabel = 'Cancel',
+  discardTitle = 'Discard changes?',
+  discardDescription = 'You have unsaved changes. Close this form and lose your edits?',
+  className = '',
+  bodyClassName = '',
+}) {
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+
+  const requestClose = () => {
+    if (busy || confirmDiscard) return;
+    if (dirty) {
+      setConfirmDiscard(true);
+      return;
+    }
+    onClose?.();
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (busy) return;
+    onSubmit?.(event);
+  };
+
+  const defaultFooter = (
+    <DrawerActions>
+      <Button type="button" variant="secondary" onClick={requestClose} disabled={busy}>
+        {cancelLabel}
+      </Button>
+      <Button type="submit" variant="primary" disabled={busy}>
+        {busy ? 'Saving…' : submitLabel}
+      </Button>
+    </DrawerActions>
+  );
+
+  return (
+    <>
+      <Drawer
+        open={open}
+        onClose={requestClose}
+        title={title}
+        description={description}
+        wide={wide}
+        className={className}
+      >
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div
+            className={`min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5 scroll-thin ${bodyClassName}`}
+          >
+            {children}
+            {error && (
+              <p className="text-sm font-medium text-danger" role="alert">
+                {typeof error === 'string' ? error : 'Something went wrong.'}
+              </p>
+            )}
+          </div>
+          <div className="shrink-0 border-t border-line bg-surface">
+            {footer !== undefined ? footer : defaultFooter}
+          </div>
+        </form>
+      </Drawer>
+      <ConfirmDialog
+        open={confirmDiscard}
+        title={discardTitle}
+        description={discardDescription}
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        severity="danger"
+        onCancel={() => setConfirmDiscard(false)}
+        onConfirm={() => {
+          setConfirmDiscard(false);
+          onClose?.();
+        }}
+      />
+    </>
   );
 }
 

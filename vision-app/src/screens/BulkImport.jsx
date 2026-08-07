@@ -1,9 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Icon from '../components/Icon.jsx';
-import { Button, Page, PageHeader, Panel, Field, Badge, Table } from '../components/UI.jsx';
+import {
+  Button,
+  Page,
+  PageHeader,
+  Panel,
+  Field,
+  FieldSection,
+  FormDrawer,
+  Badge,
+  Table,
+  Select,
+  TextInput,
+  Checkbox,
+} from '../components/UI.jsx';
 import { useStore } from '../state/AppStore.jsx';
 import { useAccounts } from '../hooks/useAccounts.js';
 import { useBulkImport } from '../hooks/useRecords.js';
+import {
+  useImportMapping,
+  useImportMappingMutations,
+} from '../hooks/useConfig.js';
 import { getErrorMessage } from '../lib/errors.js';
 
 const OBJECTS = {
@@ -57,6 +74,15 @@ function parseCsv(text) {
   return records;
 }
 
+function defaultMapping(columns) {
+  return {
+    matchBy: columns[0] || 'account',
+    upsert: false,
+    dryRun: false,
+    columnMap: Object.fromEntries(columns.map((c) => [c, c])),
+  };
+}
+
 export default function BulkImport() {
   const { toast } = useStore();
   const accountsQuery = useAccounts();
@@ -66,13 +92,61 @@ export default function BulkImport() {
   const [preview, setPreview] = useState([]);
   const [errors, setErrors] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [mappingOpen, setMappingOpen] = useState(false);
+  const [mappingDraft, setMappingDraft] = useState(null);
+  const [mappingBaseline, setMappingBaseline] = useState(null);
+  const [mapError, setMapError] = useState('');
 
   const meta = OBJECTS[object];
   const columns = meta.columns;
   const accounts = accountsQuery.data || [];
+  const mappingQuery = useImportMapping(object);
+  const { save: saveMapping } = useImportMappingMutations();
+
+  const activeMapping = useMemo(
+    () => mappingQuery.data || defaultMapping(columns),
+    [mappingQuery.data, columns]
+  );
+
+  useEffect(() => {
+    setMappingDraft(null);
+    setMappingBaseline(null);
+  }, [object]);
+
+  const openMapping = () => {
+    const next = {
+      ...defaultMapping(columns),
+      ...activeMapping,
+      columnMap: {
+        ...Object.fromEntries(columns.map((c) => [c, c])),
+        ...(activeMapping.columnMap || {}),
+      },
+    };
+    setMappingDraft(next);
+    setMappingBaseline(next);
+    setMapError('');
+    setMappingOpen(true);
+  };
+
+  const persistMapping = async () => {
+    if (!mappingDraft.matchBy) {
+      setMapError('Match-by column is required.');
+      return;
+    }
+    try {
+      await saveMapping.mutateAsync({ objectKey: object, mapping: mappingDraft });
+      toast('Import mapping saved');
+      setMappingOpen(false);
+      setMappingDraft(null);
+      setMappingBaseline(null);
+    } catch (error) {
+      setMapError(getErrorMessage(error, 'Unable to save mapping.'));
+    }
+  };
 
   const downloadTemplate = () => {
-    const blob = new Blob([`${columns.join(',')}\n`], { type: 'text/csv;charset=utf-8' });
+    const headers = columns.map((c) => activeMapping.columnMap?.[c] || c);
+    const blob = new Blob([`${headers.join(',')}\n`], { type: 'text/csv;charset=utf-8' });
     const href = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = href;
@@ -102,14 +176,25 @@ export default function BulkImport() {
     }
     const parsed = parseCsv(await file.text());
     const headers = parsed[0] || [];
+    const reverseMap = Object.fromEntries(
+      Object.entries(activeMapping.columnMap || {}).map(([field, csvCol]) => [csvCol, field])
+    );
     const required = columns.slice(0, 2);
     const validation = required
-      .filter((h) => !headers.includes(h))
-      .map((h) => `Missing required column: ${h}`);
-    const rows = parsed.slice(1).map((cells, index) => ({
-      _row: index + 2,
-      ...Object.fromEntries(headers.map((h, i) => [h, cells[i] || ''])),
-    }));
+      .filter((h) => {
+        const csvName = activeMapping.columnMap?.[h] || h;
+        return !headers.includes(csvName) && !headers.includes(h);
+      })
+      .map((h) => `Missing required column: ${activeMapping.columnMap?.[h] || h}`);
+    const rows = parsed.slice(1).map((cells, index) => {
+      const raw = Object.fromEntries(headers.map((h, i) => [h, cells[i] || '']));
+      const normalized = {};
+      columns.forEach((field) => {
+        const csvCol = activeMapping.columnMap?.[field] || field;
+        normalized[field] = raw[csvCol] ?? raw[field] ?? raw[reverseMap[csvCol]] ?? '';
+      });
+      return { _row: index + 2, ...normalized };
+    });
     rows.forEach((row) =>
       required.forEach((h) => {
         if (!row[h]) validation.push(`Row ${row._row}: ${h} is required`);
@@ -127,6 +212,17 @@ export default function BulkImport() {
 
   const importRows = async () => {
     try {
+      if (activeMapping.dryRun) {
+        setSummary({
+          imported: 0,
+          failed: 0,
+          object,
+          dryRun: true,
+          previewed: preview.length,
+        });
+        toast(`Dry run · ${preview.length} rows would import`, 'success');
+        return;
+      }
       const result = await bulkImport.mutateAsync({ object, rows: preview });
       setSummary({ imported: result.imported, failed: result.failed, object });
       toast(
@@ -146,6 +242,11 @@ export default function BulkImport() {
         overline="Tools"
         title="Bulk Import"
         description="Upload a CSV to create records for this Service Provider. Portal customers are provisioned in identity systems, not here."
+        actions={
+          <Button variant="secondary" onClick={openMapping}>
+            <Icon name="sliders" size={14} /> Column mapping
+          </Button>
+        }
       />
 
       <Panel className="max-w-2xl" padded>
@@ -168,6 +269,12 @@ export default function BulkImport() {
             ))}
           </select>
         </Field>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <Badge color="slate">Match by: {activeMapping.matchBy}</Badge>
+          {activeMapping.upsert && <Badge color="blue">Upsert</Badge>}
+          {activeMapping.dryRun && <Badge color="amber">Dry run</Badge>}
+        </div>
 
         <div className="mt-5">
           <p className="type-overline mb-2">File</p>
@@ -197,7 +304,8 @@ export default function BulkImport() {
             disabled={!preview.length || errors.length > 0}
             onClick={importRows}
           >
-            <Icon name="download" size={15} /> Import {preview.length || ''} rows
+            <Icon name="download" size={15} />{' '}
+            {activeMapping.dryRun ? 'Dry run' : 'Import'} {preview.length || ''} rows
           </Button>
         </div>
       </Panel>
@@ -236,11 +344,77 @@ export default function BulkImport() {
       )}
       {summary && (
         <Panel className="mt-5 p-5">
-          <p className="font-display text-title-sm text-ink">Import complete</p>
+          <p className="font-display text-title-sm text-ink">
+            {summary.dryRun ? 'Dry run complete' : 'Import complete'}
+          </p>
           <p className="mt-2 text-sm text-ink-muted">
-            {summary.imported} imported · {summary.failed} failed · {summary.object}
+            {summary.dryRun
+              ? `${summary.previewed} rows validated · no records written`
+              : `${summary.imported} imported · ${summary.failed} failed · ${summary.object}`}
           </p>
         </Panel>
+      )}
+
+      {mappingOpen && mappingDraft && (
+        <FormDrawer
+          onClose={() => {
+            setMappingOpen(false);
+            setMappingDraft(null);
+            setMappingBaseline(null);
+            setMapError('');
+          }}
+          onSubmit={persistMapping}
+          title="Import column mapping"
+          description={`Map CSV headers to ${object} fields and set upsert options.`}
+          dirty={JSON.stringify(mappingDraft) !== JSON.stringify(mappingBaseline)}
+          busy={saveMapping.isPending}
+          error={mapError}
+          submitLabel="Save mapping"
+          wide
+        >
+          <FieldSection title="Options">
+            <Field label="Match by" required>
+              <Select
+                options={columns}
+                value={mappingDraft.matchBy}
+                onChange={(e) =>
+                  setMappingDraft((m) => ({ ...m, matchBy: e.target.value }))
+                }
+              />
+            </Field>
+            <div className="space-y-2 sm:col-span-2">
+              <Checkbox
+                label="Upsert existing rows matched by key"
+                checked={!!mappingDraft.upsert}
+                onChange={(e) =>
+                  setMappingDraft((m) => ({ ...m, upsert: e.target.checked }))
+                }
+              />
+              <Checkbox
+                label="Dry run (validate only, do not write)"
+                checked={!!mappingDraft.dryRun}
+                onChange={(e) =>
+                  setMappingDraft((m) => ({ ...m, dryRun: e.target.checked }))
+                }
+              />
+            </div>
+          </FieldSection>
+          <FieldSection title="Column map" description="CSV header for each Vision field.">
+            {columns.map((field) => (
+              <Field key={field} label={field}>
+                <TextInput
+                  value={mappingDraft.columnMap?.[field] || field}
+                  onChange={(e) =>
+                    setMappingDraft((m) => ({
+                      ...m,
+                      columnMap: { ...m.columnMap, [field]: e.target.value },
+                    }))
+                  }
+                />
+              </Field>
+            ))}
+          </FieldSection>
+        </FormDrawer>
       )}
     </Page>
   );
