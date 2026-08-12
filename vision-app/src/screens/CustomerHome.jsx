@@ -18,44 +18,91 @@ import {
 } from '../components/UI.jsx';
 import { useStore } from '../state/AppStore.jsx';
 import { useAccounts } from '../hooks/useAccounts.js';
-import { useCreateRecord, useRecords, useRoutes } from '../hooks/useRecords.js';
+import { useCreateRecord, useRecords } from '../hooks/useRecords.js';
+import { useNotifications } from '../hooks/useConfig.js';
 import { getErrorMessage } from '../lib/errors.js';
 import { PICKLISTS } from '../data/picklists.js';
 import HomeAssistant from '../components/HomeAssistant.jsx';
 
-function emptyRequestForm(account, routes) {
-  const billing = account?.billing?.street || '';
-  const firstRoute = routes[0];
-  const routeLabel = firstRoute?.routeNumber
-    ? `${firstRoute.routeNumber}${firstRoute.collectionType ? ` · ${firstRoute.collectionType}` : ''}`
-    : '';
+function locationLabel(location) {
+  return (
+    location?.address ||
+    [location?.houseNumber, location?.street].filter(Boolean).join(' ') ||
+    location?.name ||
+    ''
+  );
+}
+
+function locationRoutesSummary(location) {
+  return [
+    location?.trashRoute && `Trash: ${location.trashRoute}`,
+    location?.recycleRoute && `Recycle: ${location.recycleRoute}`,
+    location?.organicRoute && `Organic: ${location.organicRoute}`,
+    location?.yardRoute && `Yard: ${location.yardRoute}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function resolveCustomerLocations({ customerId, customerName, accountId, locations, workOrders }) {
+  const hints = workOrders
+    .filter(
+      (workOrder) =>
+        (customerId && workOrder.customerId === customerId) ||
+        (customerName && workOrder.customer === customerName)
+    )
+    .map((workOrder) => String(workOrder.location || '').trim().toLowerCase())
+    .filter(Boolean);
+
+  const scoped = locations.filter(
+    (location) => !accountId || location.accountId === accountId || !location.accountId
+  );
+
+  if (hints.length) {
+    const matched = scoped.filter((location) => {
+      const name = String(location.name || '').trim().toLowerCase();
+      const address = String(location.address || '').trim().toLowerCase();
+      return hints.some(
+        (hint) =>
+          (name && (hint.startsWith(name) || name.startsWith(hint))) ||
+          (address && (address.startsWith(hint) || hint.startsWith(address)))
+      );
+    });
+    if (matched.length) return matched;
+  }
+
+  return scoped.filter((location) => location.customerId && location.customerId === customerId);
+}
+
+function emptyRequestForm(account, locations) {
+  const first = locations[0];
   return {
-    requestType: PICKLISTS.requestType[0] || '',
-    location: billing || routeLabel || '',
+    requestType: PICKLISTS.portalRequestType[0] || '',
+    location: locationLabel(first) || account?.billing?.street || '',
     subject: '',
     notes: '',
     preferredDate: '',
   };
 }
 
-function ServiceRequestDrawer({ account, user, routes, onClose, onSubmitted }) {
+function ServiceRequestDrawer({ account, user, locations, onClose, onSubmitted }) {
   const { toast } = useStore();
   const createMutation = useCreateRecord('workOrders');
-  const [form, setForm] = useState(() => emptyRequestForm(account, routes));
+  const [form, setForm] = useState(() => emptyRequestForm(account, locations));
   const [error, setError] = useState('');
-  const baseline = useMemo(() => emptyRequestForm(account, routes), [account, routes]);
+  const baseline = useMemo(() => emptyRequestForm(account, locations), [account, locations]);
 
   const locationOptions = useMemo(() => {
     const opts = [];
-    if (account?.billing?.street) opts.push(account.billing.street);
-    routes.forEach((route) => {
-      const label = route.routeNumber
-        ? `${route.routeNumber}${route.collectionType ? ` · ${route.collectionType}` : ''}`
-        : route.id;
+    locations.forEach((location) => {
+      const label = locationLabel(location);
       if (label && !opts.includes(label)) opts.push(label);
     });
+    if (account?.billing?.street && !opts.includes(account.billing.street)) {
+      opts.push(account.billing.street);
+    }
     return opts;
-  }, [account, routes]);
+  }, [account, locations]);
 
   const set = (patch) => setForm((prev) => ({ ...prev, ...patch }));
 
@@ -115,7 +162,7 @@ function ServiceRequestDrawer({ account, user, routes, onClose, onSubmitted }) {
       <FieldSection title="Request details">
         <Field label="Request type" required span2>
           <Select
-            options={PICKLISTS.requestType}
+            options={PICKLISTS.portalRequestType}
             value={form.requestType}
             onChange={(e) => {
               set({ requestType: e.target.value });
@@ -183,19 +230,43 @@ export default function CustomerHome({ view }) {
   const user = state.currentUser;
   const accountId = user?.accountIds?.[0];
   const accountsQuery = useAccounts();
-  const routesQuery = useRoutes(accountId);
+  const locationsQuery = useRecords('locations');
   const workOrdersQuery = useRecords('workOrders');
+  const notificationsQuery = useNotifications();
   const [requestOpen, setRequestOpen] = useState(false);
   const account = (accountsQuery.data || []).find((candidate) => candidate.id === accountId);
-  const routes = routesQuery.data || [];
-  const workOrders = (workOrdersQuery.data?.data || []).filter(
+  const allLocations = locationsQuery.data?.data || [];
+  const allWorkOrders = workOrdersQuery.data?.data || [];
+  const workOrders = allWorkOrders.filter(
     (workOrder) =>
       workOrder.customerId === user?.customerId &&
       workOrder.accountId === account?.id
   );
+  const locations = useMemo(
+    () =>
+      resolveCustomerLocations({
+        customerId: user?.customerId,
+        customerName: user?.name,
+        accountId: account?.id,
+        locations: allLocations,
+        workOrders: allWorkOrders,
+      }),
+    [user?.customerId, user?.name, account?.id, allLocations, allWorkOrders]
+  );
   const openRequests = workOrders.filter(
     (workOrder) => !['Closed', 'Complete'].includes(workOrder.status)
   );
+  const customerNotifications = (notificationsQuery.data || []).filter((notification) => {
+    if (notification.customerId) return notification.customerId === user?.customerId;
+    return notification.accountId && user?.accountIds?.includes(notification.accountId);
+  });
+  const locationsLoading =
+    locationsQuery.isLoading || workOrdersQuery.isLoading || accountsQuery.isLoading;
+  const locationsError = locationsQuery.isError
+    ? getErrorMessage(locationsQuery.error)
+    : workOrdersQuery.isError
+      ? getErrorMessage(workOrdersQuery.error)
+      : null;
 
   if (view === 'home') {
     return (
@@ -208,9 +279,9 @@ export default function CustomerHome({ view }) {
         <StatStrip
           compact
           items={[
-            { label: 'Service locations', value: routes.length, hint: 'Linked to your account' },
+            { label: 'Service locations', value: locations.length, hint: 'Linked to your account' },
             { label: 'Open requests', value: openRequests.length, hint: `${workOrders.length} total requests` },
-            { label: 'Recent messages', value: 3, hint: 'Collection and service updates' },
+            { label: 'Messages', value: customerNotifications.length, hint: 'Collection and service updates' },
             { label: 'Account status', value: account?.inactive ? 'Inactive' : 'Active', hint: account?.name || 'Service provider' },
           ]}
         />
@@ -218,10 +289,13 @@ export default function CustomerHome({ view }) {
           <HomeAssistant />
         </div>
         <LocationsContent
-          routes={routes}
-          loading={routesQuery.isLoading || accountsQuery.isLoading}
-          error={routesQuery.isError ? getErrorMessage(routesQuery.error) : null}
-          onRetry={() => routesQuery.refetch()}
+          locations={locations}
+          loading={locationsLoading}
+          error={locationsError}
+          onRetry={() => {
+            locationsQuery.refetch?.();
+            workOrdersQuery.refetch?.();
+          }}
         />
       </Page>
     );
@@ -242,7 +316,7 @@ export default function CustomerHome({ view }) {
                   <td className="mono px-4 py-3 font-medium text-ink">{wo.number}</td>
                   <td className="px-4 py-3 text-ink-muted">{wo.requestType}</td>
                   <td className="px-4 py-3">
-                    <Badge color={wo.status === 'Closed' ? 'green' : 'cyan'}>{wo.status}</Badge>
+                    <Badge color="cyan">{wo.status}</Badge>
                   </td>
                   <td className="px-4 py-3 text-ink-muted">{wo.location || '—'}</td>
                   <td className="mono px-4 py-3 text-ink-muted">{wo.dueDate}</td>
@@ -276,7 +350,7 @@ export default function CustomerHome({ view }) {
           <ServiceRequestDrawer
             account={account}
             user={user}
-            routes={routes}
+            locations={locations}
             onClose={() => setRequestOpen(false)}
             onSubmitted={() => {
               setRequestOpen(false);
@@ -290,27 +364,41 @@ export default function CustomerHome({ view }) {
 
   if (view === 'myNotifications') {
     return (
-      <Shell overline="Resident" title="My Notifications" subtitle="Service messages sent to you.">
-        <Panel>
-          <ul className="divide-y divide-line">
-            {[
-              { t: 'Your recycling cart will be collected tomorrow.', c: 'SMS', d: 'Jun 30, 9:00 AM', n: '01' },
-              { t: 'Delivery scheduled: 96 Gallon Trash cart.', c: 'Email', d: 'Jun 28, 8:00 AM', n: '02' },
-              { t: 'Missed pickup reported — resolved same day.', c: 'SMS', d: 'Jun 20, 3:12 PM', n: '03' },
-            ].map((m) => (
-              <li key={m.n} className="flex items-start gap-4 px-5 py-4">
-                <span className="mono text-xs text-ink-faint">{m.n}</span>
-                <Icon name="bell" size={15} className="mt-0.5 shrink-0 text-ink-faint" />
-                <div className="flex-1">
-                  <div className="text-sm text-ink">{m.t}</div>
-                  <div className="mt-0.5 text-xs text-ink-muted">
-                    {m.c} · {m.d}
+      <Shell overline="Resident" title="Notifications" subtitle="Service messages sent to you.">
+        <AsyncState
+          loading={notificationsQuery.isLoading}
+          error={notificationsQuery.isError ? getErrorMessage(notificationsQuery.error) : null}
+          onRetry={() => notificationsQuery.refetch()}
+        >
+          <Panel>
+            <ul className="divide-y divide-line">
+              {customerNotifications.map((notification, index) => (
+                <li key={notification.id} className="flex items-start gap-4 px-5 py-4">
+                  <span className="mono text-xs text-ink-faint">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <Icon name="bell" size={15} className="mt-0.5 shrink-0 text-ink-faint" />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-ink">{notification.title}</div>
+                    <div className="mt-0.5 text-xs leading-relaxed text-ink-muted">
+                      {notification.detail}
+                    </div>
+                    {notification.createdAt && (
+                      <div className="mt-1 text-xs text-ink-faint">
+                        {new Date(notification.createdAt).toLocaleString()}
+                      </div>
+                    )}
                   </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Panel>
+                </li>
+              ))}
+              {!customerNotifications.length && (
+                <li className="px-5 py-10 text-center text-sm text-ink-muted">
+                  You have no service messages.
+                </li>
+              )}
+            </ul>
+          </Panel>
+        </AsyncState>
       </Shell>
     );
   }
@@ -345,35 +433,46 @@ export default function CustomerHome({ view }) {
   return (
     <Shell overline="Resident" title="My Locations" subtitle="Service addresses on your account.">
       <LocationsContent
-        routes={routes}
-        loading={routesQuery.isLoading || accountsQuery.isLoading}
-        error={routesQuery.isError ? getErrorMessage(routesQuery.error) : null}
-        onRetry={() => routesQuery.refetch()}
+        locations={locations}
+        loading={locationsLoading}
+        error={locationsError}
+        onRetry={() => {
+          locationsQuery.refetch?.();
+          workOrdersQuery.refetch?.();
+        }}
       />
     </Shell>
   );
 }
 
-function LocationsContent({ routes, loading, error, onRetry }) {
+function LocationsContent({ locations, loading, error, onRetry }) {
   return (
     <AsyncState loading={loading} error={error} onRetry={onRetry}>
       <Panel>
-        <Table columns={['Route', 'Status', 'Collection', 'Truck', 'Driver']}>
-          {routes.map((route) => (
-            <tr key={route.id} className="interactive hover:bg-elevated/70">
-              <td className="mono px-4 py-3 font-medium text-ink">{route.routeNumber}</td>
-              <td className="px-4 py-3">
-                <Badge color="cyan">{route.status}</Badge>
+        <Table columns={['Address', 'Zone', 'Validated', 'Routes']}>
+          {locations.map((location) => (
+            <tr key={location.id || location.number || location.name} className="interactive hover:bg-elevated/70">
+              <td className="px-4 py-3 font-medium text-ink">
+                {locationLabel(location) || location.name || '—'}
+                {location.type ? (
+                  <div className="mt-0.5 text-xs text-ink-faint">{location.type}</div>
+                ) : null}
               </td>
-              <td className="px-4 py-3 text-ink-muted">{route.collectionType || '—'}</td>
-              <td className="mono px-4 py-3 text-ink-muted">{route.truck || '—'}</td>
-              <td className="px-4 py-3 text-ink-muted">{route.driver || '—'}</td>
+              <td className="px-4 py-3 text-ink-muted">{location.zone || '—'}</td>
+              <td className="px-4 py-3">
+                <Badge color={location.isValidated ? 'green' : 'slate'}>
+                  {location.isValidated ? 'Validated' : 'Unvalidated'}
+                </Badge>
+              </td>
+              <td className="px-4 py-3 text-ink-muted">
+                {locationRoutesSummary(location) || '—'}
+              </td>
             </tr>
           ))}
-          {!routes.length && (
+          {!locations.length && (
             <tr>
-              <td colSpan={5} className="px-4 py-10 text-center text-sm text-ink-muted">
-                No locations or routes are linked to your account yet.
+              <td colSpan={4} className="px-4 py-10 text-center text-sm text-ink-muted">
+                No locations are linked to your account yet.
               </td>
             </tr>
           )}

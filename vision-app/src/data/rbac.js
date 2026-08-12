@@ -47,8 +47,11 @@ export const ROLE_NAV_KEYS = {
     'r-routes',
     'r-notif',
     'mapCenter',
+    'devices',
     'reports',
     'dashboards',
+    'activity',
+    'reportSubs',
   ],
 
   // Field Tech — assigned Work Orders + Assets only (+ Map, Details)
@@ -69,11 +72,22 @@ export const ROLE_NAV_KEYS = {
     'r-indTips',
     'r-routes',
     'mapCenter',
+    'devices',
     'reports',
+    'activity',
   ],
 
   // Analyst — dashboards / reports (read-only); no mutate tools
-  'sp:Analyst': ['home', 'details', 'reports', 'dashboards', 'r-aggTips', 'r-indTips'],
+  'sp:Analyst': [
+    'home',
+    'details',
+    'reports',
+    'dashboards',
+    'activity',
+    'reportSubs',
+    'r-aggTips',
+    'r-indTips',
+  ],
 
   // Customer portal
   'customer:Portal User': null,
@@ -95,6 +109,8 @@ export const ROLE_MODULES = {
     'productTypes',
     'apiIntegrations',
     'notificationConfig',
+    'reportSubscriptions',
+    'activity',
     'onboarding',
     'contractOnboarding',
     'setup',
@@ -116,6 +132,9 @@ export const ROLE_MODULES = {
     'mapCenter',
     'bulkImport',
     'analytics',
+    'activity',
+    'devices',
+    'reportSubscriptions',
   ],
 
   'sp:Ops Manager': [
@@ -131,6 +150,9 @@ export const ROLE_MODULES = {
     'individualTips',
     'mapCenter',
     'analytics',
+    'activity',
+    'devices',
+    'reportSubscriptions',
   ],
 
   'sp:Field Tech': ['home', 'account', 'assets', 'workOrders', 'mapCenter'],
@@ -148,9 +170,19 @@ export const ROLE_MODULES = {
     'individualTips',
     'mapCenter',
     'analytics',
+    'activity',
+    'devices',
   ],
 
-  'sp:Analyst': ['home', 'account', 'aggregatedTips', 'individualTips', 'analytics'],
+  'sp:Analyst': [
+    'home',
+    'account',
+    'aggregatedTips',
+    'individualTips',
+    'analytics',
+    'activity',
+    'reportSubscriptions',
+  ],
 
   'customer:Portal User': ['home', 'myLocations', 'myWorkOrders', 'myNotifications', 'myAccount'],
 };
@@ -228,6 +260,11 @@ export function canAccessAccountTab(user, tab) {
   const tabs = ROLE_ACCOUNT_TABS[roleKey(user)];
   if (!tabs) return false;
   return tabs.includes(tab);
+}
+
+/** Who may preview the workspace as another persona (Rehrig admin only) */
+export function canPreviewPersonasForUser(user) {
+  return !!(user?.active && user.persona === 'rehrig' && user.role === 'Admin');
 }
 
 /** Who may create Service Provider accounts */

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -9,15 +9,35 @@ import {
   CartesianGrid,
 } from 'recharts';
 import Icon from '../components/Icon.jsx';
-import { Badge, Page, PageHeader, Panel, StatStrip, AsyncState } from '../components/UI.jsx';
+import { Badge, Button, Page, PageHeader, Panel, Select, StatStrip, AsyncState } from '../components/UI.jsx';
 import { useStore } from '../state/AppStore.jsx';
-import { useAccounts } from '../hooks/useAccounts.js';
 import { useRecords } from '../hooks/useRecords.js';
-import { useDashboardAnalytics } from '../hooks/useConfig.js';
 import { getErrorMessage } from '../lib/errors.js';
 import HomeAssistant from '../components/HomeAssistant.jsx';
+import { useAccounts } from '../hooks/useAccounts.js';
+import {
+  useWorkspaceMutations,
+  useWorkspaceSettings,
+} from '../hooks/useConfig.js';
+import {
+  DASHBOARD_WIDGETS,
+  DASHBOARD_WIDGET_BY_ID,
+  dashboardPresetFor,
+} from '../data/dashboardWidgets.js';
 
 const AGING_COLORS = ['#0f7b55', '#8b969f', '#c27803', '#b42318'];
+
+function parseRecordDate(value) {
+  if (!value) return null;
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function localDateKey(date) {
+  return [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+    .map((part) => String(part).padStart(2, '0'))
+    .join('-');
+}
 
 function OpsBar({ label, value, target, warn }) {
   return (
@@ -40,244 +60,331 @@ function OpsBar({ label, value, target, warn }) {
   );
 }
 
+function WidgetShell({ widget, index, count, onMove, onRemove, onDragStart, onDrop, children }) {
+  const spanClass = {
+    4: 'lg:col-span-4',
+    6: 'lg:col-span-6',
+    8: 'lg:col-span-8',
+    12: 'lg:col-span-12',
+  }[widget.span] || 'lg:col-span-4';
+  return (
+    <Panel
+      className={spanClass}
+      padded
+    >
+      <div
+        draggable
+        onDragStart={(event) => onDragStart(event, widget.id)}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => onDrop(event, widget.id)}
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p className="type-overline">{widget.category}</p>
+            <h2 className="mt-1 font-display text-title-sm text-ink">{widget.title}</h2>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="btn-secondary px-2 py-1.5"
+              onClick={() => onMove(index, -1)}
+              disabled={index === 0}
+              aria-label={`Move ${widget.title} up`}
+            >
+              <Icon name="chevronDown" size={13} className="rotate-180" />
+            </button>
+            <button
+              type="button"
+              className="btn-secondary px-2 py-1.5"
+              onClick={() => onMove(index, 1)}
+              disabled={index === count - 1}
+              aria-label={`Move ${widget.title} down`}
+            >
+              <Icon name="chevronDown" size={13} />
+            </button>
+            <button
+              type="button"
+              className="btn-secondary px-2 py-1.5 text-danger"
+              onClick={() => onRemove(widget.id)}
+              aria-label={`Remove ${widget.title}`}
+            >
+              <Icon name="x" size={13} />
+            </button>
+          </div>
+        </div>
+        {children}
+      </div>
+    </Panel>
+  );
+}
+
+function RecordList({ rows, empty, render }) {
+  return rows.length ? (
+    <ul className="divide-y divide-line border-y border-line">{rows.map(render)}</ul>
+  ) : (
+    <p className="py-8 text-center text-sm text-ink-muted">{empty}</p>
+  );
+}
+
 export default function Dashboard() {
-  const { state, navigate } = useStore();
-  const accountsQuery = useAccounts();
+  const { state, navigate, toast } = useStore();
   const workOrdersQuery = useRecords('workOrders');
   const dispatchesQuery = useRecords('dispatches');
   const trucksQuery = useRecords('trucks');
   const tipsQuery = useRecords('aggregatedTips');
-  const analyticsQuery = useDashboardAnalytics();
-  const first = state.currentUser?.firstName || 'there';
-  const today = new Date().toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const accountsQuery = useAccounts();
+  const settingsQuery = useWorkspaceSettings();
+  const { update: updateWorkspace } = useWorkspaceMutations();
   const workOrders = workOrdersQuery.data?.data || [];
   const dispatches = dispatchesQuery.data?.data || [];
   const trucks = trucksQuery.data?.data || [];
   const tips = tipsQuery.data?.data || [];
-  const openWorkOrders = workOrders.filter((w) => !['Closed', 'Complete'].includes(w.status));
-  const activeDispatches = dispatches.filter((d) => ['In Route', 'In Progress'].includes(d.status));
-  const activeTrucks = trucks.filter((t) => t.status === 'Active');
-  const latestTipDate = tips.map((t) => t.date).filter(Boolean).sort().at(-1);
-  const latestTons = tips.filter((t) => t.date === latestTipDate).reduce((sum, t) => sum + Number(t.tons || 0), 0);
-  const agingRows = analyticsQuery.data?.hotTicketAging || [];
-  const missedPickups = analyticsQuery.data?.missedPickups30d || [];
-  const priorityWorkOrders = openWorkOrders.slice(0, 5);
-  const fleetUtilization = trucks.length ? Math.round((activeTrucks.length / trucks.length) * 100) : 0;
-  const completedWorkOrders = workOrders.filter((workOrder) =>
-    ['Closed', 'Complete'].includes(workOrder.status)
-  ).length;
-  const resolutionRate = workOrders.length
-    ? Math.round((completedWorkOrders / workOrders.length) * 100)
-    : 0;
-  const loading =
-    workOrdersQuery.isLoading ||
-    dispatchesQuery.isLoading ||
-    trucksQuery.isLoading ||
-    analyticsQuery.isLoading;
+  const accounts = accountsQuery.data || [];
+  const user = state.currentUser;
+  const userKey = user?.id || user?.email || 'anonymous';
+  const storedLayout = settingsQuery.data?.dashboardLayouts?.[userKey];
+  const fallbackLayout = dashboardPresetFor(user);
+  const initialLayout = Array.isArray(storedLayout)
+    ? storedLayout.filter((id) => DASHBOARD_WIDGET_BY_ID[id])
+    : fallbackLayout;
+  const [layoutState, setLayoutState] = useState({ userKey, ids: initialLayout });
+  const layout = layoutState.userKey === userKey ? layoutState.ids : initialLayout;
+  const [draggedId, setDraggedId] = useState(null);
+
+  useEffect(() => {
+    setLayoutState({ userKey, ids: initialLayout });
+  }, [userKey, JSON.stringify(storedLayout)]);
+
+  const persistLayout = async (next) => {
+    setLayoutState({ userKey, ids: next });
+    try {
+      await updateWorkspace.mutateAsync({
+        dashboardLayouts: {
+          ...(settingsQuery.data?.dashboardLayouts || {}),
+          [userKey]: next,
+        },
+      });
+    } catch (error) {
+      toast(getErrorMessage(error, 'Unable to save dashboard layout.'), 'danger');
+    }
+  };
+
+  const moveWidget = (index, direction) => {
+    const target = index + direction;
+    if (target < 0 || target >= layout.length) return;
+    const next = [...layout];
+    [next[index], next[target]] = [next[target], next[index]];
+    persistLayout(next);
+  };
+
+  const dropWidget = (event, targetId) => {
+    event?.preventDefault?.();
+    if (!draggedId || draggedId === targetId) return;
+    const next = layout.filter((id) => id !== draggedId);
+    const insertAt = next.indexOf(targetId);
+    if (insertAt < 0) return;
+    next.splice(insertAt, 0, draggedId);
+    setDraggedId(null);
+    persistLayout(next);
+  };
+
+  const openWorkOrders = workOrders.filter((row) => !['Closed', 'Complete'].includes(row.status));
+  const activeDispatches = dispatches.filter((row) => ['In Route', 'In Progress'].includes(row.status));
+  const activeTrucks = trucks.filter((row) => row.status === 'Active');
+  const now = new Date();
+  const todayKey = localDateKey(now);
+  const todayTons = tips
+    .filter((row) => row.date === todayKey)
+    .reduce((sum, row) => sum + Number(row.tons || 0), 0);
+  const ownerValues = [user?.id, user?.alias, user?.name, user?.email].filter(Boolean);
+  const myWorkOrders = workOrders.filter(
+    (row) => ownerValues.includes(row.owner) || (user?.customerId && row.customerId === user.customerId)
+  );
+  const priorityWorkOrders = [...openWorkOrders]
+    .sort((a, b) => {
+      const rank = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+      return (rank[a.priority] ?? 4) - (rank[b.priority] ?? 4);
+    })
+    .slice(0, 5);
+  const agingRows = [...openWorkOrders
+    .filter((row) => row.hotTicket || ['Critical', 'High'].includes(row.priority))
+    .reduce((groups, row) => {
+      const openedAt = parseRecordDate(row.requestDate || row.createdAt || row.dueDate);
+      if (!openedAt) return groups;
+      const hours = Math.max(0, (now.getTime() - openedAt.getTime()) / 36e5);
+      const bucket = hours < 24 ? 0 : hours < 48 ? 1 : hours < 72 ? 2 : 3;
+      const name = row.account || 'Unassigned account';
+      const buckets = groups.get(name) || [0, 0, 0, 0];
+      buckets[bucket] += 1;
+      groups.set(name, buckets);
+      return groups;
+    }, new Map()).entries()].map(([name, buckets]) => ({
+      name,
+      buckets,
+      total: buckets.reduce((sum, value) => sum + value, 0),
+    }));
+  const trendStart = new Date(now);
+  trendStart.setHours(0, 0, 0, 0);
+  trendStart.setDate(trendStart.getDate() - 29);
+  const missedPickups = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date(trendStart);
+    date.setDate(trendStart.getDate() + index);
+    return { day: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), dateKey: localDateKey(date), count: 0 };
+  });
+  workOrders.forEach((row) => {
+    if (!/missed pickup/i.test(`${row.requestType || ''} ${row.subject || ''}`)) return;
+    const date = parseRecordDate(row.requestDate || row.createdAt || row.dueDate);
+    const point = date && missedPickups.find((item) => item.dateKey === localDateKey(date));
+    if (point) point.count += 1;
+  });
+  const tipHistory = [...tips.reduce((groups, row) => {
+    if (!row.date) return groups;
+    groups.set(row.date, (groups.get(row.date) || 0) + Number(row.tons || 0));
+    return groups;
+  }, new Map()).entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-14)
+    .map(([date, tons]) => ({
+      date: new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      tons,
+    }));
+  const slaRows = [...workOrders.reduce((groups, row) => {
+    if (!row.account || !row.dueDate || !row.completionDate || !['Closed', 'Complete'].includes(row.status)) return groups;
+    const due = parseRecordDate(row.dueDate);
+    const completed = parseRecordDate(row.completionDate);
+    if (!due || !completed) return groups;
+    const current = groups.get(row.account) || { total: 0, met: 0 };
+    current.total += 1;
+    if (completed <= due) current.met += 1;
+    groups.set(row.account, current);
+    return groups;
+  }, new Map()).entries()].map(([name, value]) => ({
+    name,
+    value: Math.round((value.met / value.total) * 100),
+    detail: `${value.met}/${value.total} completed by due date`,
+  }));
+  const completedDispatches = dispatches.filter((row) => row.status === 'Complete').length;
+  const completedWorkOrders = workOrders.filter((row) => ['Closed', 'Complete'].includes(row.status)).length;
+  const readiness = [
+    { label: 'Provider records', count: accounts.length },
+    { label: 'Work order records', count: workOrders.length },
+    { label: 'Dispatch records', count: dispatches.length },
+    { label: 'Fleet records', count: trucks.length },
+    { label: 'Tip records', count: tips.length },
+  ];
+
+  const renderWidget = (id) => {
+    if (id === 'kpi-tiles') {
+      return <StatStrip compact items={[
+        { label: 'Active dispatches', value: activeDispatches.length, hint: 'In route or in progress' },
+        { label: 'Open work orders', value: openWorkOrders.length, hint: 'Awaiting completion' },
+        { label: 'Trucks in field', value: activeTrucks.length, hint: `of ${trucks.length} tracked` },
+        { label: 'Tons collected today', value: todayTons.toFixed(1), hint: todayKey },
+      ]} />;
+    }
+    if (id === 'hot-ticket-aging') {
+      return <div className="space-y-4">{agingRows.length ? agingRows.map((row) => (
+        <div key={row.name}>
+          <div className="mb-1.5 flex justify-between text-xs"><span>{row.name}</span><span className="mono">{row.total}</span></div>
+          <div className="flex h-3 overflow-hidden bg-elevated">{row.buckets.map((value, index) => value ? (
+            <span key={index} style={{ width: `${value / row.total * 100}%`, background: AGING_COLORS[index] }} />
+          ) : null)}</div>
+        </div>
+      )) : <p className="py-6 text-center text-sm text-ink-muted">No hot tickets with aging data.</p>}</div>;
+    }
+    if (id === 'ops-health') {
+      const fleetRate = trucks.length ? Math.round(activeTrucks.length / trucks.length * 100) : 0;
+      const dispatchRate = dispatches.length ? Math.round(completedDispatches / dispatches.length * 100) : 0;
+      const resolutionRate = workOrders.length ? Math.round(completedWorkOrders / workOrders.length * 100) : 0;
+      return <div className="space-y-5">
+        <OpsBar label="Fleet utilization" value={fleetRate} target={`${activeTrucks.length}/${trucks.length} active`} />
+        <OpsBar label="Dispatch completion" value={dispatchRate} target={`${completedDispatches}/${dispatches.length} complete`} />
+        <OpsBar label="WO resolution" value={resolutionRate} target={`${completedWorkOrders}/${workOrders.length} resolved`} />
+      </div>;
+    }
+    if (id === 'missed-pickups') {
+      return <div className="h-44"><ResponsiveContainer width="100%" height="100%"><LineChart data={missedPickups}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e6ebe8" /><XAxis dataKey="day" tick={{ fontSize: 9 }} interval={6} />
+        <YAxis tick={{ fontSize: 9 }} /><Tooltip /><Line type="monotone" dataKey="count" stroke="#b42318" dot={false} />
+      </LineChart></ResponsiveContainer></div>;
+    }
+    if (id === 'sla-by-account') {
+      return slaRows.length ? <div className="space-y-3">{slaRows.map((row) => (
+        <div key={row.name}><div className="flex justify-between text-xs"><span>{row.name}</span><span className="mono font-semibold">{row.value}%</span></div>
+          <div className="mt-1 h-2 bg-elevated"><div className="h-2 bg-brand" style={{ width: `${row.value}%` }} /></div>
+          <p className="mt-1 text-[11px] text-ink-faint">{row.detail}</p></div>
+      ))}</div> : <p className="py-6 text-center text-sm text-ink-muted">No completed work orders include both due and completion dates.</p>;
+    }
+    if (id === 'tip-history') {
+      return tipHistory.length ? <div className="h-44"><ResponsiveContainer width="100%" height="100%"><LineChart data={tipHistory}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e6ebe8" /><XAxis dataKey="date" tick={{ fontSize: 9 }} />
+        <YAxis tick={{ fontSize: 9 }} /><Tooltip /><Line type="monotone" dataKey="tons" stroke="#0b5f49" dot={false} />
+      </LineChart></ResponsiveContainer></div> : <p className="py-6 text-center text-sm text-ink-muted">No tip history yet.</p>;
+    }
+    if (id === 'setup-checklist') {
+      return <ul className="divide-y divide-line border-y border-line">{readiness.map((item) => (
+        <li key={item.label} className="flex items-center justify-between py-2.5 text-sm"><span>{item.label}</span>
+          <span className="flex items-center gap-2 text-ink-muted">{item.count}<Icon name={item.count ? 'checkCircle' : 'alert'} size={14} /></span></li>
+      ))}</ul>;
+    }
+    if (id === 'trucks-in-field') {
+      return <><p className="font-display text-3xl font-semibold text-ink">{activeTrucks.length}</p><p className="mt-1 text-xs text-ink-muted">Active of {trucks.length} tracked trucks</p></>;
+    }
+    if (id === 'tons-collected-today') {
+      return <><p className="font-display text-3xl font-semibold text-ink">{todayTons.toFixed(1)}</p><p className="mt-1 text-xs text-ink-muted">Tons recorded for {todayKey}</p></>;
+    }
+    if (id === 'open-work-orders') {
+      return <><p className="font-display text-3xl font-semibold text-ink">{openWorkOrders.length}</p><Button variant="ghost" onClick={() => navigate('workOrders')} className="mt-3">Open queue</Button></>;
+    }
+    const isMyWork = id === 'my-work-orders';
+    const isDispatch = id === 'live-dispatches' || id === 'active-dispatches';
+    const rows = isDispatch ? activeDispatches.slice(0, 5) : isMyWork ? myWorkOrders.slice(0, 5) : priorityWorkOrders;
+    return <RecordList rows={rows} empty={isDispatch ? 'No active dispatches.' : 'No matching work orders.'} render={(row) => (
+      <li key={row.id || row.number} className="py-3">
+        <div className="flex items-center justify-between gap-2 text-sm"><span className="truncate font-medium">{row.subject || row.number || row.id}</span><Badge color={isDispatch ? 'cyan' : 'amber'}>{row.status || row.priority}</Badge></div>
+        <p className="mt-0.5 truncate text-xs text-ink-muted">{row.account || 'Unassigned'}{row.owner ? ` · ${row.owner}` : ''}</p>
+      </li>
+    )} />;
+  };
+
+  const first = user?.firstName || 'there';
+  const available = DASHBOARD_WIDGETS.filter((widget) => !layout.includes(widget.id));
+  const loading = workOrdersQuery.isLoading || dispatchesQuery.isLoading || trucksQuery.isLoading || tipsQuery.isLoading || accountsQuery.isLoading || settingsQuery.isLoading;
 
   return (
     <Page wide>
       <PageHeader
-        overline={today}
-        title={`Good morning, ${first}.`}
-        description={`Operational snapshot · ${openWorkOrders.length} open work orders · source data through ${latestTipDate || 'unknown'}`}
+        overline={now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+        title={`Welcome, ${first}.`}
+        description={`${openWorkOrders.length} open work orders · ${activeDispatches.length} active dispatches`}
+        actions={available.length ? (
+          <Select
+            value=""
+            placeholder="Add widget…"
+            aria-label="Add dashboard widget"
+            options={available.map((widget) => ({ value: widget.id, label: widget.title }))}
+            onChange={(event) => event.target.value && persistLayout([...layout, event.target.value])}
+          />
+        ) : null}
       />
-      <AsyncState
-        loading={loading}
-        error={
-          workOrdersQuery.isError
-            ? getErrorMessage(workOrdersQuery.error)
-            : null
-        }
-        onRetry={() => {
-          workOrdersQuery.refetch();
-          dispatchesQuery.refetch();
-          trucksQuery.refetch();
-          analyticsQuery.refetch();
-        }}
-      >
-
-      <StatStrip
-        compact
-        items={[
-          { label: 'Active dispatches', value: activeDispatches.length, hint: `${dispatches.length} dispatches in dataset` },
-          { label: 'Open work orders', value: openWorkOrders.length, hint: `${workOrders.length} total records` },
-          { label: 'Active trucks', value: activeTrucks.length, hint: `of ${trucks.length} tracked` },
-          { label: `Tons on ${latestTipDate || 'latest date'}`, value: latestTons.toFixed(1), hint: 'Sum of aggregated tip records' },
-        ]}
-      />
-      <div className="mt-4">
+      <AsyncState loading={loading} error={workOrdersQuery.isError ? getErrorMessage(workOrdersQuery.error) : null} onRetry={() => {
+        workOrdersQuery.refetch(); dispatchesQuery.refetch(); trucksQuery.refetch(); tipsQuery.refetch(); accountsQuery.refetch(); settingsQuery.refetch();
+      }}>
         <HomeAssistant />
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-12">
-        <Panel className="lg:col-span-8" padded>
-          <div className="mb-1 flex items-center justify-between">
-            <div>
-              <p className="type-overline">SLA risk</p>
-              <p className="mt-1 font-display text-title-sm text-ink">Hot ticket aging</p>
-            </div>
-            <button className="link-brand text-xs" onClick={() => navigate('workOrders')}>Open tickets</button>
-          </div>
-          <p className="mb-5 text-xs text-ink-muted">
-            High-priority tickets by age · over 48h is SLA-at-risk
-          </p>
-          <div className="space-y-4">
-            {agingRows.map((row) => (
-              <div key={row.name}>
-                <div className="mb-1.5 flex items-center justify-between text-xs">
-                  <span className="font-medium text-ink-soft">{row.name}</span>
-                  <span className="flex items-center gap-2">
-                    {row.breach && <Badge color="rose">Breach</Badge>}
-                    <span className="mono font-semibold tabular-nums text-ink">{row.total}</span>
-                  </span>
-                </div>
-                <div className="flex h-3 w-full overflow-hidden bg-elevated">
-                  {row.buckets.map((b, i) =>
-                    b > 0 ? (
-                      <div
-                        key={i}
-                        className="flex items-center justify-center text-[9px] font-semibold text-white"
-                        style={{ width: `${(b / row.total) * 100}%`, background: AGING_COLORS[i] }}
-                      >
-                        {b}
-                      </div>
-                    ) : null
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-5 flex flex-wrap gap-4 text-[11px] text-ink-muted">
-            {['< 24h', '24-48h', '48-72h', '> 72h'].map((l, i) => (
-              <span key={l} className="flex items-center gap-1.5">
-                <span className="h-2 w-2" style={{ background: AGING_COLORS[i] }} /> {l}
-              </span>
-            ))}
-          </div>
-        </Panel>
-
-        <Panel className="lg:col-span-4" padded>
-          <p className="type-overline">Ops health</p>
-          <p className="mt-1 font-display text-title-sm text-ink">Fleet status</p>
-          <div className="mt-5 space-y-5">
-            <OpsBar label="Fleet utilization" value={fleetUtilization} target={`${activeTrucks.length}/${trucks.length} trucks · target 75%`} warn={fleetUtilization < 75} />
-            <OpsBar label="On-time completion" value={87} target="5 routes · target 85%" />
-            <OpsBar label="WO resolution rate" value={resolutionRate} target={`${openWorkOrders.length} still open · target 80%`} warn={resolutionRate < 80} />
-          </div>
-        </Panel>
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <Panel padded>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <p className="type-overline">Queue</p>
-              <p className="mt-1 font-display text-title-sm text-ink">Priority work orders</p>
-            </div>
-            <button className="link-brand flex items-center gap-1 text-xs" onClick={() => navigate('workOrders')}>
-              All <Icon name="chevronRight" size={12} />
-            </button>
-          </div>
-          <ul className="divide-y divide-line border-y border-line">
-            {priorityWorkOrders.map((wo) => (
-              <li key={wo.id} className="flex items-start gap-3 py-3">
-                <Badge color="amber">{wo.priority || (wo.hotTicket ? 'High' : 'Medium')}</Badge>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium text-ink">
-                    {wo.subject || wo.requestType || 'Service request'}{' '}
-                    <span className="mono text-ink-faint">· {wo.number || wo.id}</span>
-                  </div>
-                  <div className="text-xs text-ink-muted">
-                    {wo.account || 'Unassigned account'} · {wo.owner || 'Unassigned'}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-
-        <Panel padded>
-          <div className="mb-1 flex items-baseline justify-between">
-            <div>
-              <p className="type-overline">Trend</p>
-              <p className="mt-1 font-display text-title-sm text-ink">Missed pickups</p>
-            </div>
-            <span className="font-display text-2xl font-semibold tabular-nums text-ink">77</span>
-          </div>
-          <p className="mb-3 text-xs text-ink-muted">30-day seeded trend · not live telemetry</p>
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={missedPickups} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e6ebe8" />
-                <XAxis dataKey="day" tick={{ fontSize: 9, fill: '#8b969f' }} interval={6} />
-                <YAxis tick={{ fontSize: 9, fill: '#8b969f' }} />
-                <Tooltip
-                  contentStyle={{
-                    fontSize: 11,
-                    borderRadius: 6,
-                    border: '1px solid #e6ebe8',
-                  }}
-                />
-                <Line type="monotone" dataKey="Trash" stroke="#b42318" strokeWidth={1.75} dot={false} />
-                <Line type="monotone" dataKey="Recycle" stroke="#0b5f49" strokeWidth={1.75} dot={false} />
-                <Line type="monotone" dataKey="Organic" stroke="#0f7b55" strokeWidth={1.75} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 flex gap-3 text-[11px] text-ink-muted">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 bg-danger" /> Trash
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 bg-brand" /> Recycle
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 bg-success" /> Organic
-            </span>
-          </div>
-        </Panel>
-
-        <Panel padded>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <p className="type-overline">Snapshot</p>
-              <p className="mt-1 font-display text-title-sm text-ink">Dispatches</p>
-            </div>
-            <button className="link-brand flex items-center gap-1 text-xs" onClick={() => navigate('dispatches')}>
-              All <Icon name="chevronRight" size={12} />
-            </button>
-          </div>
-          <ul className="divide-y divide-line border-y border-line">
-            {dispatches.slice(0, 5).map((dispatch) => {
-              const progress = dispatch.status === 'Complete'
-                ? 100
-                : ['In Route', 'In Progress'].includes(dispatch.status) ? 62 : 0;
-              return (
-              <li key={dispatch.id} className="py-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="mono font-medium text-ink">{dispatch.number || dispatch.id}</span>
-                  <span className="mono text-xs font-semibold tabular-nums text-ink-soft">
-                    {progress}%
-                  </span>
-                </div>
-                <div className="mt-0.5 text-xs text-ink-muted">
-                  {dispatch.account || 'Unassigned account'} · {dispatch.truck || 'Unassigned truck'}
-                </div>
-                <div className="mt-2 h-1 w-full bg-elevated">
-                  <div className="h-1 bg-ink" style={{ width: `${progress}%` }} />
-                </div>
-              </li>
-              );
+        {layout.length ? (
+          <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-12">
+            {layout.map((id, index) => {
+              const widget = DASHBOARD_WIDGET_BY_ID[id];
+              if (!widget) return null;
+              return <WidgetShell key={id} widget={widget} index={index} count={layout.length} onMove={moveWidget}
+                onRemove={(widgetId) => persistLayout(layout.filter((item) => item !== widgetId))}
+                onDragStart={(event, widgetId) => { setDraggedId(widgetId); event.dataTransfer.effectAllowed = 'move'; }}
+                onDrop={dropWidget}>{renderWidget(id)}</WidgetShell>;
             })}
-          </ul>
-        </Panel>
-      </div>
+          </div>
+        ) : (
+          <Panel padded className="mt-6 text-center"><p className="text-sm text-ink-muted">Add a widget to build your dashboard.</p></Panel>
+        )}
       </AsyncState>
     </Page>
   );

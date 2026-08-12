@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import {
   Badge,
@@ -17,12 +17,19 @@ import {
   Checkbox,
 } from '../components/UI.jsx';
 import { useStore } from '../state/AppStore.jsx';
-import { useAccounts, useUsers } from '../hooks/useAccounts.js';
+import { useUsers } from '../hooks/useAccounts.js';
+import { useRecords } from '../hooks/useRecords.js';
 import {
   useWorkspaceMutations,
   useWorkspaceSettings,
 } from '../hooks/useConfig.js';
 import { getErrorMessage } from '../lib/errors.js';
+import { RECORD_SCHEMAS } from '../data/recordSchemas.js';
+import {
+  ROLE_PSG,
+  canAccessModuleForUser,
+  canCreateRecordsForUser,
+} from '../data/rbac.js';
 
 const SECTIONS = [
   {
@@ -44,7 +51,7 @@ const SECTIONS = [
     label: 'Developer Console',
     icon: 'layers',
     title: 'Developer Console',
-    subtitle: 'Run ad-hoc queries, inspect data, and debug. Queries respect your active permissions and scope.',
+    subtitle: 'Browse live records and inspect data. Results respect your active permissions and scope.',
   },
 ];
 
@@ -83,13 +90,34 @@ const PSGS = [
   },
 ];
 
-const PROFILE_OBJECTS = ['Account', 'Contact', 'Work Order', 'Dispatch', 'Asset', 'Route', 'Segment'];
+const RBAC_MATRIX_MODULES = [
+  { key: 'analytics', label: 'Reports' },
+  { key: 'workOrders', label: 'Work Orders' },
+  { key: 'assets', label: 'Assets' },
+];
 
-const SAMPLE_QUERIES = [
-  { name: 'SPs with no segments', preview: 'SELECT id, name FROM accounts WHERE …' },
-  { name: 'Recent WO breaches', preview: 'SELECT * FROM workOrders WHERE hotTicket …' },
-  { name: 'Trucks below utilization', preview: 'SELECT truckNumber, utilization FROM trucks …' },
-  { name: 'Inactive contacts audit', preview: 'SELECT id, account FROM contacts WHERE isUserActive …' },
+const RBAC_ROLES = Object.keys(ROLE_PSG).map((key) => {
+  const separator = key.indexOf(':');
+  const persona = key.slice(0, separator);
+  const role = key.slice(separator + 1);
+  return { key, persona, role, user: { persona, role, active: true } };
+});
+
+const EXPLORER_SOURCES = [
+  { key: 'workOrders', label: 'Work Orders' },
+  { key: 'dispatches', label: 'Dispatches' },
+  { key: 'assets', label: 'Assets' },
+  { key: 'trucks', label: 'Trucks' },
+  { key: 'locations', label: 'Locations' },
+  { key: 'aggregatedTips', label: 'Aggregated Tips' },
+  { key: 'individualTips', label: 'Individual Tips' },
+];
+
+const EXPLORER_VIEWS = [
+  { name: 'Open work orders', kind: 'workOrders', field: 'status', value: 'Open' },
+  { name: 'Assets awaiting repair', kind: 'assets', field: 'status', value: 'Awaiting Repair' },
+  { name: 'Trucks in repair', kind: 'trucks', field: 'status', value: 'Repair' },
+  { name: 'Scheduled dispatches', kind: 'dispatches', field: 'status', value: 'Scheduled' },
 ];
 
 const LANDING_OPTIONS = ['Home', 'Reports', 'Work Orders', 'Map Center'];
@@ -103,7 +131,6 @@ const NOTIF_OPTIONS = [
 export default function Setup() {
   const { state, navigate, persona, toast } = useStore();
   const usersQuery = useUsers();
-  const accountsQuery = useAccounts();
   const settingsQuery = useWorkspaceSettings();
   const { update: updateSettings } = useWorkspaceMutations();
   const users = usersQuery.data || [];
@@ -120,11 +147,9 @@ export default function Setup() {
   const [tab, setTab] = useState(
     USER_MGMT_TABS.some((t) => t.key === navTab) ? navTab : 'general'
   );
-  const [queryText, setQueryText] = useState(
-    'SELECT id, name, industry, employees\nFROM accounts\nWHERE accountType = \'Service Provider\'\n  AND inactive = false\nLIMIT 5;'
-  );
-  const [queryBusy, setQueryBusy] = useState(false);
-  const [queryResult, setQueryResult] = useState(null);
+  const [explorerKind, setExplorerKind] = useState('workOrders');
+  const [explorerField, setExplorerField] = useState('');
+  const [explorerValue, setExplorerValue] = useState('');
   const [orgDraft, setOrgDraft] = useState(null);
   const [orgBaseline, setOrgBaseline] = useState(null);
   const [prefDraft, setPrefDraft] = useState(null);
@@ -208,23 +233,33 @@ export default function Setup() {
     }
   };
 
-  const runQuery = () => {
-    setQueryBusy(true);
-    setQueryResult(null);
-    window.setTimeout(() => {
-      const rows = (accountsQuery.data || [])
-        .filter((a) => !a.inactive)
-        .slice(0, 5)
-        .map((a) => ({
-          id: a.id,
-          name: a.name,
-          industry: a.industry,
-          employees: a.employees,
-        }));
-      setQueryResult({ rows, elapsedMs: 42 + Math.floor(Math.random() * 30) });
-      setQueryBusy(false);
-    }, 400);
-  };
+  const explorerQuery = useRecords(explorerKind);
+  const explorerColumns = RECORD_SCHEMAS[explorerKind]?.listColumns || [];
+
+  const explorerResult = useMemo(() => {
+    const source = Array.isArray(explorerQuery.data?.data)
+      ? explorerQuery.data.data
+      : Array.isArray(explorerQuery.data)
+      ? explorerQuery.data
+      : [];
+    const started = performance.now();
+    const term = explorerValue.trim().toLowerCase();
+    const rows = source.filter((row) => {
+      if (!term) return true;
+      if (explorerField) {
+        return String(row[explorerField] ?? '').toLowerCase().includes(term);
+      }
+      return Object.values(row).some((cell) =>
+        String(cell ?? '').toLowerCase().includes(term)
+      );
+    });
+    return {
+      rows,
+      elapsedMs: performance.now() - started,
+      matched: rows.length,
+      total: source.length,
+    };
+  }, [explorerQuery.data, explorerField, explorerValue]);
 
   return (
     <Page wide>
@@ -232,13 +267,6 @@ export default function Setup() {
         overline="Configure"
         title="Workspace"
         description="Organization administration, your personal account, and developer tools."
-        actions={
-          canEditWorkspace ? (
-            <Badge color="green">Editable</Badge>
-          ) : (
-            <Badge color="slate">Scoped preferences</Badge>
-          )
-        }
       />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -338,10 +366,6 @@ export default function Setup() {
 
               {tab === 'users' && (
                 <SetupBlock title="Every user across all three personas">
-                  <p className="mb-3 text-xs text-ink-muted">
-                    Demo user directory is seed-backed for login. Creating or deactivating users
-                    requires the identity backend.
-                  </p>
                   <Table columns={['Name', 'Alias', 'Persona', 'Role', 'Scope', 'Active']}>
                     {users.map((u) => (
                       <tr key={u.id} className="interactive hover:bg-elevated/70">
@@ -372,29 +396,35 @@ export default function Setup() {
               )}
 
               {tab === 'profiles' && (
-                <SetupBlock title="Reference permission matrix (read only)">
-                  <Table columns={['Object', 'View', 'Create', 'Edit', 'Delete']}>
-                    {PROFILE_OBJECTS.map((o) => (
-                      <tr key={o} className="interactive hover:bg-elevated/70">
-                        <td className="px-4 py-3 font-medium text-ink">{o}</td>
-                        <td className="px-4 py-3">
-                          <BoolCell value={true} />
+                <SetupBlock title="Role permission matrix (read only)">
+                  <Table
+                    columns={[
+                      'Persona · Role',
+                      'Permission Set Group',
+                      ...RBAC_MATRIX_MODULES.map((m) => m.label),
+                      'Create / Edit / Delete',
+                    ]}
+                  >
+                    {RBAC_ROLES.map((r) => (
+                      <tr key={r.key} className="interactive hover:bg-elevated/70">
+                        <td className="px-4 py-3 font-medium text-ink capitalize">
+                          {r.persona} · {r.role}
                         </td>
+                        <td className="px-4 py-3 text-ink-muted">{ROLE_PSG[r.key]}</td>
+                        {RBAC_MATRIX_MODULES.map((m) => (
+                          <td key={m.key} className="px-4 py-3">
+                            <BoolCell value={canAccessModuleForUser(r.user, m.key)} />
+                          </td>
+                        ))}
                         <td className="px-4 py-3">
-                          <BoolCell value={o !== 'Account'} />
-                        </td>
-                        <td className="px-4 py-3">
-                          <BoolCell value={true} />
-                        </td>
-                        <td className="px-4 py-3">
-                          <BoolCell value={o !== 'Account' && o !== 'Segment'} />
+                          <BoolCell value={canCreateRecordsForUser(r.user)} />
                         </td>
                       </tr>
                     ))}
                   </Table>
                   <p className="mt-4 text-xs text-ink-muted">
-                    System Administrator profile shown. Rights can be extended (never reduced) by
-                    Permission Set Groups.
+                    Derived from the platform role definitions. Permission Set Groups extend a
+                    profile&apos;s rights and are never reduced below it.
                   </p>
                 </SetupBlock>
               )}
@@ -442,55 +472,82 @@ export default function Setup() {
 
           {section === 'devcon' && (
             <div className="space-y-5">
-              <SetupBlock title="Query editor">
+              <SetupBlock title="Data explorer">
                 <p className="mb-3 text-xs text-ink-muted">
-                  Documented API / SOQL-style examples. Results use the local demo dataset — no live
-                  request is sent in demo mode.
+                  Browse live workspace records by type and filter on any field. Results reflect
+                  your active permissions and scope.
                 </p>
-                <textarea
-                  value={queryText}
-                  onChange={(e) => setQueryText(e.target.value)}
-                  rows={7}
-                  className="field-input font-mono text-xs"
-                  spellCheck={false}
-                />
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button type="button" className="btn-primary" onClick={runQuery} disabled={queryBusy}>
-                    {queryBusy ? 'Running…' : 'Run query'}
-                  </button>
-                  <span className="text-xs text-ink-faint">
-                    Dataset: {(accountsQuery.data || []).length} account records
-                  </span>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Field label="Record type">
+                    <Select
+                      options={EXPLORER_SOURCES.map((s) => ({ value: s.key, label: s.label }))}
+                      value={explorerKind}
+                      onChange={(e) => {
+                        setExplorerKind(e.target.value);
+                        setExplorerField('');
+                      }}
+                    />
+                  </Field>
+                  <Field label="Filter field">
+                    <Select
+                      options={[
+                        { value: '', label: 'All fields' },
+                        ...explorerColumns.map((c) => ({ value: c.key, label: c.label })),
+                      ]}
+                      value={explorerField}
+                      onChange={(e) => setExplorerField(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Contains">
+                    <TextInput
+                      value={explorerValue}
+                      onChange={(e) => setExplorerValue(e.target.value)}
+                      placeholder="Type to filter…"
+                    />
+                  </Field>
                 </div>
-                {queryResult && (
-                  <div className="mt-4 overflow-x-auto rounded-panel border border-line">
-                    <div className="border-b border-line bg-elevated/50 px-3 py-2 text-xs text-ink-muted">
-                      {queryResult.rows.length} rows · {queryResult.elapsedMs} ms
-                    </div>
-                    <Table columns={['Id', 'Name', 'Industry', 'Employees']}>
-                      {queryResult.rows.map((row) => (
-                        <tr key={row.id}>
-                          <td className="mono px-4 py-2 text-ink-muted">{row.id}</td>
-                          <td className="px-4 py-2 font-medium text-ink">{row.name}</td>
-                          <td className="px-4 py-2 text-ink-muted">{row.industry || '—'}</td>
-                          <td className="mono px-4 py-2 text-ink-muted">{row.employees ?? '—'}</td>
+                <div className="mt-4 overflow-x-auto rounded-panel border border-line">
+                  <div className="border-b border-line bg-elevated/50 px-3 py-2 text-xs text-ink-muted">
+                    {explorerResult.matched} of {explorerResult.total} records ·{' '}
+                    {explorerResult.elapsedMs.toFixed(2)} ms
+                  </div>
+                  {explorerResult.rows.length ? (
+                    <Table columns={explorerColumns.map((c) => c.label)}>
+                      {explorerResult.rows.slice(0, 50).map((row, index) => (
+                        <tr key={row.id || row.number || row.name || index}>
+                          {explorerColumns.map((c) => (
+                            <td key={c.key} className="px-4 py-2 text-ink-muted">
+                              {String(row[c.key] ?? '—')}
+                            </td>
+                          ))}
                         </tr>
                       ))}
                     </Table>
-                  </div>
-                )}
+                  ) : (
+                    <div className="px-4 py-8 text-center text-sm text-ink-muted">
+                      No records match the current filters.
+                    </div>
+                  )}
+                </div>
               </SetupBlock>
-              <SetupBlock title="Saved query samples">
+              <SetupBlock title="Saved views">
                 <ul className="space-y-2">
-                  {SAMPLE_QUERIES.map((q) => (
-                    <li key={q.name}>
+                  {EXPLORER_VIEWS.map((v) => (
+                    <li key={v.name}>
                       <button
                         type="button"
-                        onClick={() => setQueryText(`-- ${q.name}\n${q.preview}`)}
+                        onClick={() => {
+                          setExplorerKind(v.kind);
+                          setExplorerField(v.field);
+                          setExplorerValue(v.value);
+                        }}
                         className="w-full rounded-panel border border-line px-3 py-2.5 text-left interactive hover:bg-elevated/70"
                       >
-                        <div className="text-sm font-medium text-ink">{q.name}</div>
-                        <div className="mt-0.5 font-mono text-[11px] text-ink-faint">{q.preview}</div>
+                        <div className="text-sm font-medium text-ink">{v.name}</div>
+                        <div className="mt-0.5 text-[11px] text-ink-faint">
+                          {EXPLORER_SOURCES.find((s) => s.key === v.kind)?.label || v.kind} · {v.field}{' '}
+                          contains &ldquo;{v.value}&rdquo;
+                        </div>
                       </button>
                     </li>
                   ))}

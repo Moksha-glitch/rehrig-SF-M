@@ -17,7 +17,8 @@ import {
 } from '../data/rbac.js';
 import { readNavigation, writeNavigation } from '../utils/appNavigation.js';
 import { useAuth } from './authContextBase.js';
-import { THEME_KEY } from '../utils/appRepository.js';
+import { appRepository, THEME_KEY } from '../utils/appRepository.js';
+import { apiClient } from '../lib/apiClient.js';
 import { AppStoreContext } from './storeContext.js';
 
 function homeModuleFor() {
@@ -37,6 +38,9 @@ const initialUi = {
   nav: typeof window !== 'undefined' ? readNavigation() : { module: 'home', params: {} },
   toast: null,
   assistantOpen: false,
+  followedAccountIds:
+    typeof window !== 'undefined' ? appRepository.getFollowedAccountIds() : [],
+  reportSubscriptions: appRepository.getReportSubscriptions(),
 };
 
 function reducer(state, action) {
@@ -51,6 +55,10 @@ function reducer(state, action) {
       return { ...state, toast: null };
     case 'SET_ASSISTANT_OPEN':
       return { ...state, assistantOpen: !!action.open };
+    case 'SET_FOLLOWED_ACCOUNTS':
+      return { ...state, followedAccountIds: action.ids || [] };
+    case 'SET_REPORT_SUBSCRIPTIONS':
+      return { ...state, reportSubscriptions: action.items || [] };
     default:
       return state;
   }
@@ -93,10 +101,10 @@ export function ApiAppStoreProvider({ children }) {
     didRouteOnLogin.current = true;
     const requested = readNavigation();
     if (requested.module === 'home') {
-      const nav = {
-        module: homeModuleFor(user),
-        params: user.role === 'Analyst' ? { view: 'dashboards' } : {},
-      };
+      const nav =
+        user.role === 'Analyst'
+          ? { module: 'analytics', params: { view: 'dashboards' } }
+          : { module: homeModuleFor(user), params: {} };
       dispatch({ type: 'NAVIGATE', ...nav });
       writeNavigation(nav, { replace: true });
     }
@@ -159,6 +167,56 @@ export function ApiAppStoreProvider({ children }) {
   const scopedAccountIds = useMemo(() => user?.accountIds || [], [user]);
   const isScoped = scopedAccountIds.length > 0 || !!user?.segmentIds?.length;
 
+  const isFollowingAccount = useCallback(
+    (accountId) => (ui.followedAccountIds || []).includes(accountId),
+    [ui.followedAccountIds]
+  );
+  const toggleFollowAccount = useCallback((accountId) => {
+    const next = appRepository.toggleFollowedAccount(accountId);
+    dispatch({ type: 'SET_FOLLOWED_ACCOUNTS', ids: next });
+    return next.includes(accountId);
+  }, []);
+  const deleteApiIntegration = useCallback(async (id) => {
+    await apiClient.delete(`/api-integrations/${id}`);
+    return { id };
+  }, []);
+
+  const commitSubscriptions = useCallback((items) => {
+    const next = appRepository.setReportSubscriptions(items);
+    dispatch({ type: 'SET_REPORT_SUBSCRIPTIONS', items: next });
+    return next;
+  }, []);
+  const createReportSubscription = useCallback(
+    (item) => {
+      const next = {
+        ...item,
+        id: item.id || `sub-${Date.now().toString(36)}`,
+        active: item.active !== false,
+      };
+      commitSubscriptions([next, ...(ui.reportSubscriptions || [])]);
+      return next;
+    },
+    [commitSubscriptions, ui.reportSubscriptions]
+  );
+  const updateReportSubscription = useCallback(
+    (id, changes) => {
+      commitSubscriptions(
+        (ui.reportSubscriptions || []).map((item) =>
+          item.id === id ? { ...item, ...changes } : item
+        )
+      );
+      return { id, ...changes };
+    },
+    [commitSubscriptions, ui.reportSubscriptions]
+  );
+  const deleteReportSubscription = useCallback(
+    (id) => {
+      commitSubscriptions((ui.reportSubscriptions || []).filter((item) => item.id !== id));
+      return { id };
+    },
+    [commitSubscriptions, ui.reportSubscriptions]
+  );
+
   const state = useMemo(
     () => ({
       currentUser: user,
@@ -166,6 +224,8 @@ export function ApiAppStoreProvider({ children }) {
       nav: ui.nav,
       toast: ui.toast,
       assistantOpen: ui.assistantOpen,
+      followedAccountIds: ui.followedAccountIds,
+      reportSubscriptions: ui.reportSubscriptions,
     }),
     [user, ui]
   );
@@ -180,6 +240,20 @@ export function ApiAppStoreProvider({ children }) {
     openAssistant,
     closeAssistant,
     toggleAssistant,
+    isFollowingAccount,
+    toggleFollowAccount,
+    followedAccountIds: ui.followedAccountIds || [],
+    reportSubscriptions: ui.reportSubscriptions || [],
+    createReportSubscription,
+    updateReportSubscription,
+    deleteReportSubscription,
+    deleteApiIntegration,
+    canPreviewPersonas: false,
+    personaViews: [],
+    previewPersona: () => null,
+    exitPersonaPreview: () => null,
+    previewOrigin: null,
+    isPreviewingPersona: false,
     persona,
     allowedModules,
     canAccessModule,

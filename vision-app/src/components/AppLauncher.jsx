@@ -194,7 +194,7 @@ export default function AppLauncher({ open, onClose }) {
       onClose?.();
       return;
     }
-    toast(`${app.label} is not available in this demo persona`, 'warning');
+    toast(`You do not have access to ${app.label}`, 'warning');
   };
 
   const goItem = (item) => {
@@ -263,7 +263,7 @@ export default function AppLauncher({ open, onClose }) {
               autoFocus
             />
           </label>
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose} aria-label="Close App Launcher">
             <Icon name="x" size={15} />
           </Button>
         </div>

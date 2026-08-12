@@ -13,22 +13,62 @@ import {
   USERS,
 } from '../data/seed.js';
 import { RECORD_SCHEMAS } from '../data/recordSchemas.js';
-import { DEFAULT_WORKSPACE_SETTINGS, SEED_APP_LICENSES } from '../data/appLauncher.js';
+import {
+  DEFAULT_WORKSPACE_SETTINGS,
+  SEED_APP_LICENSES,
+  SEED_REPORT_SUBSCRIPTIONS,
+} from '../data/appLauncher.js';
 import { SEED_REPORT_SPECS } from '../data/reportStudio.js';
 
 export const STORAGE_VERSION = 1;
-export const STORAGE_KEY = `vision.demo.v${STORAGE_VERSION}`;
-export const REMEMBER_KEY = 'vision.demo.remember';
-export const SESSION_USER_KEY = 'vision.demo.sessionUserId';
+export const STORAGE_KEY = `vision.app.v${STORAGE_VERSION}`;
+export const REMEMBER_KEY = 'vision.app.remember';
+export const SESSION_USER_KEY = 'vision.app.sessionUserId';
 export const THEME_KEY = 'vision.theme';
+export const FOLLOWED_ACCOUNTS_KEY = 'vision.app.followedAccountIds';
+export const REPORT_SUBSCRIPTIONS_KEY = 'vision.app.reportSubscriptions';
+
+const LEGACY_STORAGE_KEY = `vision.demo.v${STORAGE_VERSION}`;
+const LEGACY_REMEMBER_KEY = 'vision.demo.remember';
+const LEGACY_SESSION_USER_KEY = 'vision.demo.sessionUserId';
 
 const clone = (value) => {
   if (typeof structuredClone === 'function') return structuredClone(value);
   return JSON.parse(JSON.stringify(value));
 };
 
+function migrateLegacyKeys() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!window.localStorage.getItem(STORAGE_KEY)) {
+      const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy) {
+        window.localStorage.setItem(STORAGE_KEY, legacy);
+        window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
+    }
+    if (window.localStorage.getItem(REMEMBER_KEY) == null) {
+      const legacyRemember = window.localStorage.getItem(LEGACY_REMEMBER_KEY);
+      if (legacyRemember != null) {
+        window.localStorage.setItem(REMEMBER_KEY, legacyRemember);
+        window.localStorage.removeItem(LEGACY_REMEMBER_KEY);
+      }
+    }
+    if (!window.sessionStorage.getItem(SESSION_USER_KEY)) {
+      const legacySession = window.sessionStorage.getItem(LEGACY_SESSION_USER_KEY);
+      if (legacySession) {
+        window.sessionStorage.setItem(SESSION_USER_KEY, legacySession);
+        window.sessionStorage.removeItem(LEGACY_SESSION_USER_KEY);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 function readRememberPreference() {
   if (typeof window === 'undefined') return true;
+  migrateLegacyKeys();
   return window.localStorage.getItem(REMEMBER_KEY) !== '0';
 }
 
@@ -110,9 +150,12 @@ export function createSeedState() {
       productTypes: clone(CONFIG_PRODUCT_TYPES),
     },
     reportSpecs: clone(SEED_REPORT_SPECS),
+    reportSubscriptions: clone(SEED_REPORT_SUBSCRIPTIONS),
     appLicenses: clone(SEED_APP_LICENSES),
     workspaceSettings: clone(DEFAULT_WORKSPACE_SETTINGS),
     importMappings: {},
+    followedAccountIds: [],
+    previewOriginUserId: null,
     nav: { module: 'home', params: {} },
     toast: null,
     assistantOpen: false,
@@ -129,17 +172,65 @@ function persistedState(state) {
   };
 }
 
+function readFollowedAccountIds() {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(FOLLOWED_ACCOUNTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeFollowedAccountIds(ids) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(FOLLOWED_ACCOUNTS_KEY, JSON.stringify(ids));
+  } catch {
+    /* ignore */
+  }
+}
+
+function readReportSubscriptions() {
+  if (typeof window === 'undefined') return clone(SEED_REPORT_SUBSCRIPTIONS);
+  try {
+    const raw = window.localStorage.getItem(REPORT_SUBSCRIPTIONS_KEY);
+    if (!raw) return clone(SEED_REPORT_SUBSCRIPTIONS);
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : clone(SEED_REPORT_SUBSCRIPTIONS);
+  } catch {
+    return clone(SEED_REPORT_SUBSCRIPTIONS);
+  }
+}
+
+function writeReportSubscriptions(items) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(REPORT_SUBSCRIPTIONS_KEY, JSON.stringify(items));
+  } catch {
+    /* ignore */
+  }
+}
+
 export const appRepository = {
   load() {
     const seed = createSeedState();
     if (typeof window === 'undefined') return seed;
+
+    migrateLegacyKeys();
 
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) {
         const sessionId = window.sessionStorage.getItem(SESSION_USER_KEY);
         const sessionUser = USERS.find((candidate) => candidate.id === sessionId) || null;
-        return { ...seed, currentUser: sessionUser };
+        return {
+          ...seed,
+          currentUser: sessionUser,
+          followedAccountIds: readFollowedAccountIds(),
+        };
       }
       const stored = JSON.parse(raw);
       if (stored.version !== STORAGE_VERSION || !stored.state) return seed;
@@ -147,16 +238,24 @@ export const appRepository = {
       const userId = resolvePersistedUserId(stored.state.currentUserId);
       const user = USERS.find((candidate) => candidate.id === userId) || null;
       const { currentUserId: _currentUserId, ...saved } = stored.state;
+      const followedFromState = Array.isArray(saved.followedAccountIds)
+        ? saved.followedAccountIds
+        : readFollowedAccountIds();
+      writeFollowedAccountIds(followedFromState);
       return {
         ...seed,
         ...saved,
         currentUser: user,
+        followedAccountIds: followedFromState,
         config: { ...seed.config, ...(saved.config || {}) },
         operationalRecords: {
           ...seed.operationalRecords,
           ...(saved.operationalRecords || {}),
         },
         reportSpecs: Array.isArray(saved.reportSpecs) ? saved.reportSpecs : seed.reportSpecs,
+        reportSubscriptions: Array.isArray(saved.reportSubscriptions)
+          ? saved.reportSubscriptions
+          : seed.reportSubscriptions,
         appLicenses: Array.isArray(saved.appLicenses) ? saved.appLicenses : seed.appLicenses,
         workspaceSettings: {
           ...seed.workspaceSettings,
@@ -174,10 +273,17 @@ export const appRepository = {
   save(state) {
     if (typeof window === 'undefined') return false;
     try {
+      migrateLegacyKeys();
       window.localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({ version: STORAGE_VERSION, state: persistedState(state) })
       );
+      if (Array.isArray(state.followedAccountIds)) {
+        writeFollowedAccountIds(state.followedAccountIds);
+      }
+      if (Array.isArray(state.reportSubscriptions)) {
+        writeReportSubscriptions(state.reportSubscriptions);
+      }
       return true;
     } catch {
       return false;
@@ -189,16 +295,52 @@ export const appRepository = {
     window.localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0');
   },
 
+  getRemember() {
+    return readRememberPreference();
+  },
+
   setSessionUser(userId) {
     if (typeof window === 'undefined') return;
     if (userId) window.sessionStorage.setItem(SESSION_USER_KEY, userId);
     else window.sessionStorage.removeItem(SESSION_USER_KEY);
   },
 
+  getFollowedAccountIds() {
+    return readFollowedAccountIds();
+  },
+
+  setFollowedAccountIds(ids) {
+    writeFollowedAccountIds(Array.isArray(ids) ? ids : []);
+  },
+
+  getReportSubscriptions() {
+    return readReportSubscriptions();
+  },
+
+  setReportSubscriptions(items) {
+    const next = Array.isArray(items) ? items : [];
+    writeReportSubscriptions(next);
+    return next;
+  },
+
+  toggleFollowedAccount(accountId) {
+    const current = readFollowedAccountIds();
+    const next = current.includes(accountId)
+      ? current.filter((id) => id !== accountId)
+      : [...current, accountId];
+    writeFollowedAccountIds(next);
+    return next;
+  },
+
   reset() {
     if (typeof window !== 'undefined') {
+      migrateLegacyKeys();
       window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      window.localStorage.removeItem(FOLLOWED_ACCOUNTS_KEY);
+      window.localStorage.removeItem(REPORT_SUBSCRIPTIONS_KEY);
       window.sessionStorage.removeItem(SESSION_USER_KEY);
+      window.sessionStorage.removeItem(LEGACY_SESSION_USER_KEY);
     }
     return createSeedState();
   },

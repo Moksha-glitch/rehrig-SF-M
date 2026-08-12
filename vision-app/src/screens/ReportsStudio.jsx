@@ -26,6 +26,7 @@ import {
   PageHeader,
   Panel,
   Select,
+  SearchField,
   TextInput,
   TextArea,
   Checkbox,
@@ -43,12 +44,26 @@ import {
   REPORT_CHART_TYPES,
   REPORT_DATA_SOURCES,
   REPORT_SORT_BY,
+  REPORT_MAP_DENSITIES,
   REPORT_TIMEFRAMES,
   aggregateReportRows,
   blankReportSpec,
 } from '../data/reportStudio.js';
 
 const CHART_COLORS = ['#0b5f49', '#1E5A8F', '#c27803', '#b42318', '#0f7b55', '#8b969f', '#4A9BD8'];
+
+const REPORT_FOLDERS = [
+  'My Reports',
+  'Shared with me',
+  'Public Reports',
+  'Recently Viewed',
+  'Favorites',
+  'Operations',
+  'Fleet Health',
+  'Customer Insights',
+  'SLA & Compliance',
+  'Templates',
+];
 
 function ReportPreview({ spec, data }) {
   const yDomain = [
@@ -228,6 +243,22 @@ function ReportConfigDrawer({ draft, baseline, onChange, onClose, onSave, busy, 
         </Field>
       </FieldSection>
 
+      {['locations', 'dispatches'].includes(draft.source) && (
+        <FieldSection title="Map density" description="Set the visual density for geographic results.">
+          <Field label="Density mode" span2>
+            <Select
+              options={REPORT_MAP_DENSITIES.map((density) => ({
+                value: density.k,
+                label: density.l,
+              }))}
+              value={draft.mapDensity || 'concentrated'}
+              onChange={(e) => onChange({ ...draft, mapDensity: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+        </FieldSection>
+      )}
+
       <FieldSection title="Timeframe">
         <div className="sm:col-span-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
           {REPORT_TIMEFRAMES.map((tf) => {
@@ -366,7 +397,7 @@ function ReportConfigDrawer({ draft, baseline, onChange, onClose, onSave, busy, 
 }
 
 export default function ReportsStudio({ view = 'reports' }) {
-  const { toast, canCreateRecords, canAccessModule } = useStore();
+  const { state, toast, canCreateRecords, canAccessModule } = useStore();
   const canEdit = canCreateRecords && canAccessModule('analytics');
   const specsQuery = useReportSpecs();
   const { upsert, remove } = useReportMutations();
@@ -375,9 +406,45 @@ export default function ReportsStudio({ view = 'reports' }) {
   const [saveError, setSaveError] = useState('');
   const [deletePending, setDeletePending] = useState(null);
   const [activeId, setActiveId] = useState(null);
+  const [folder, setFolder] = useState('My Reports');
+  const [search, setSearch] = useState('');
 
-  const specs = specsQuery.data || [];
-  const active = specs.find((s) => s.id === activeId) || specs[0] || null;
+  const specs = useMemo(
+    () =>
+      (specsQuery.data || []).map((spec) => ({
+        ...blankReportSpec(),
+        ...spec,
+        ownerId: spec.ownerId || state.currentUser?.id || '',
+        owner: spec.owner || state.currentUser?.name || 'Unknown owner',
+        category: spec.category || 'Operations',
+      })),
+    [specsQuery.data, state.currentUser?.id, state.currentUser?.name]
+  );
+  const folderMatches = (spec, folderName) => {
+    const currentId = state.currentUser?.id;
+    if (folderName === 'My Reports') return spec.ownerId === currentId;
+    if (folderName === 'Shared with me') {
+      return spec.ownerId !== currentId && (spec.sharedWith || []).some((id) => id === currentId || id === '*');
+    }
+    if (folderName === 'Public Reports') return spec.visibility === 'public';
+    if (folderName === 'Recently Viewed') return !!spec.lastViewed;
+    if (folderName === 'Favorites') return !!spec.favorite;
+    if (folderName === 'Templates') return !!spec.template;
+    return spec.category === folderName && !spec.template;
+  };
+  const filteredSpecs = specs
+    .filter((spec) => folderMatches(spec, folder))
+    .filter((spec) =>
+      `${spec.name} ${spec.desc || ''} ${spec.owner} ${REPORT_DATA_SOURCES[spec.source]?.label || ''}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase())
+    )
+    .sort((a, b) =>
+      folder === 'Recently Viewed'
+        ? String(b.lastViewed).localeCompare(String(a.lastViewed))
+        : a.name.localeCompare(b.name)
+    );
+  const active = filteredSpecs.find((s) => s.id === activeId) || filteredSpecs[0] || null;
   const sourceKind = REPORT_DATA_SOURCES[active?.source]?.kind || 'workOrders';
   const recordsQuery = useRecords(sourceKind);
   const rows = recordsQuery.data?.data || recordsQuery.data || [];
@@ -388,10 +455,31 @@ export default function ReportsStudio({ view = 'reports' }) {
   }, [active, rows]);
 
   const openNew = () => {
-    const next = blankReportSpec();
+    const next = blankReportSpec({
+      ownerId: state.currentUser?.id || '',
+      owner: state.currentUser?.name || '',
+    });
     setDraft(next);
     setBaseline(next);
     setSaveError('');
+  };
+
+  const selectReport = async (spec) => {
+    setActiveId(spec.id);
+    try {
+      await upsert.mutateAsync({ ...spec, lastViewed: new Date().toISOString() });
+    } catch (error) {
+      toast(getErrorMessage(error, 'Unable to update recently viewed reports.'), 'danger');
+    }
+  };
+
+  const toggleFavorite = async (spec) => {
+    try {
+      await upsert.mutateAsync({ ...spec, favorite: !spec.favorite });
+      toast(spec.favorite ? 'Removed from favorites' : 'Added to favorites');
+    } catch (error) {
+      toast(getErrorMessage(error, 'Unable to update favorite.'), 'danger');
+    }
   };
 
   const openEdit = (spec) => {
@@ -442,18 +530,19 @@ export default function ReportsStudio({ view = 'reports' }) {
         overline="Insights"
         title={isDashboards ? 'Dashboards' : 'Reports Studio'}
         description={
-          isDashboards
-            ? 'Saved dashboard widgets · configure via Reports Studio filters'
-            : 'Point-and-click builder · filters, grouping, and chart types'
+          <span>
+            {isDashboards
+              ? 'Saved dashboard widgets · configure via Reports Studio filters'
+              : 'Point-and-click builder · filters, grouping, and chart types'}
+            {!canEdit && <span className="text-ink-faint"> · View only</span>}
+          </span>
         }
         actions={
           canEdit ? (
             <Button variant="primary" onClick={openNew}>
               <Icon name="plus" size={15} /> New report
             </Button>
-          ) : (
-            <Badge color="slate">View only</Badge>
-          )
+          ) : null
         }
       />
 
@@ -463,44 +552,90 @@ export default function ReportsStudio({ view = 'reports' }) {
         onRetry={() => specsQuery.refetch()}
       >
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-          <Panel className="lg:col-span-4" padded={false}>
+          <Panel className="lg:col-span-5" padded={false}>
             <div className="border-b border-line px-4 py-3">
-              <p className="type-overline">Saved</p>
-              <p className="mt-0.5 text-sm text-ink-muted">{specs.length} reports</p>
+              <SearchField
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search widgets, reports, dashboards…"
+                className="max-w-none"
+              />
             </div>
-            <ul className="max-h-[28rem] divide-y divide-line overflow-y-auto scroll-thin">
-              {specs.map((spec) => {
-                const selected = (active?.id || null) === spec.id;
-                return (
-                  <li key={spec.id}>
+            <div className="grid min-h-[28rem] grid-cols-[9.5rem_1fr]">
+              <nav className="border-r border-line bg-elevated/30 p-2" aria-label="Report folders">
+                {REPORT_FOLDERS.map((folderName) => {
+                  const count = specs.filter((spec) => folderMatches(spec, folderName)).length;
+                  return (
                     <button
+                      key={folderName}
                       type="button"
-                      onClick={() => setActiveId(spec.id)}
-                      className={`flex w-full items-start gap-3 px-4 py-3 text-left interactive ${
-                        selected ? 'bg-elevated' : 'hover:bg-elevated/60'
+                      onClick={() => {
+                        setFolder(folderName);
+                        setActiveId(null);
+                      }}
+                      className={`flex w-full items-center justify-between gap-2 rounded-control px-2 py-2 text-left text-xs interactive ${
+                        folder === folderName
+                          ? 'bg-surface font-semibold text-ink shadow-hairline'
+                          : 'text-ink-muted hover:bg-surface/70 hover:text-ink'
                       }`}
                     >
-                      <Icon name="barChart" size={15} className="mt-0.5 shrink-0 text-ink-faint" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-ink">
-                          {spec.name}
-                        </span>
-                        <span className="mt-0.5 block truncate text-xs text-ink-muted">
-                          {REPORT_DATA_SOURCES[spec.source]?.label || spec.source} ·{' '}
-                          {REPORT_CHART_TYPES.find((c) => c.k === spec.chart)?.l || spec.chart}
-                        </span>
-                      </span>
+                      <span>{folderName}</span>
+                      <span className="mono text-[10px] text-ink-faint">{count}</span>
                     </button>
+                  );
+                })}
+              </nav>
+              <ul className="max-h-[32rem] divide-y divide-line overflow-y-auto scroll-thin">
+                {filteredSpecs.map((spec) => {
+                  const selected = (active?.id || null) === spec.id;
+                  return (
+                    <li key={spec.id} className={selected ? 'bg-elevated' : ''}>
+                      <div className="flex items-start gap-2 px-3 py-3">
+                        <button
+                          type="button"
+                          onClick={() => selectReport(spec)}
+                          className="flex min-w-0 flex-1 items-start gap-2 text-left"
+                        >
+                          <Icon name="barChart" size={14} className="mt-0.5 shrink-0 text-ink-faint" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-ink">{spec.name}</span>
+                            <span className="mt-0.5 block truncate text-[11px] text-ink-muted">
+                              {spec.owner} · {REPORT_DATA_SOURCES[spec.source]?.label || spec.source}
+                            </span>
+                            <span className="mt-1 block text-[10px] text-ink-faint">
+                              {spec.visibility === 'public'
+                                ? 'Public'
+                                : (spec.sharedWith || []).length
+                                  ? 'Shared'
+                                  : 'Private'}
+                              {spec.lastViewed
+                                ? ` · Viewed ${new Date(spec.lastViewed).toLocaleDateString()}`
+                                : ''}
+                            </span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleFavorite(spec)}
+                          aria-label={`${spec.favorite ? 'Remove' : 'Add'} ${spec.name} ${spec.favorite ? 'from' : 'to'} favorites`}
+                          className={spec.favorite ? 'text-warn' : 'text-ink-faint'}
+                        >
+                          <Icon name="star" size={14} className={spec.favorite ? 'fill-current' : ''} />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+                {!filteredSpecs.length && (
+                  <li className="px-4 py-8 text-center text-sm text-ink-muted">
+                    No reports in {folder}.
                   </li>
-                );
-              })}
-              {!specs.length && (
-                <li className="px-4 py-8 text-center text-sm text-ink-muted">No saved reports yet.</li>
-              )}
-            </ul>
+                )}
+              </ul>
+            </div>
           </Panel>
 
-          <Panel className="lg:col-span-8" padded>
+          <Panel className="lg:col-span-7" padded>
             {active ? (
               <>
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -510,6 +645,10 @@ export default function ReportsStudio({ view = 'reports' }) {
                     <p className="mt-1 text-xs text-ink-muted">{active.desc || 'No description'}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <Button variant="ghost" onClick={() => toggleFavorite(active)}>
+                      <Icon name="star" size={14} className={active.favorite ? 'fill-current text-warn' : ''} />
+                      {active.favorite ? 'Favorited' : 'Favorite'}
+                    </Button>
                     <Button variant="secondary" onClick={() => openEdit(active)}>
                       <Icon name="sliders" size={14} /> Configure
                     </Button>
@@ -518,6 +657,7 @@ export default function ReportsStudio({ view = 'reports' }) {
                         variant="ghost"
                         onClick={() => setDeletePending(active)}
                         className="text-danger"
+                        aria-label={`Delete ${active.name}`}
                       >
                         <Icon name="trash" size={14} />
                       </Button>
@@ -537,10 +677,16 @@ export default function ReportsStudio({ view = 'reports' }) {
                   <Badge color="slate">
                     Chart: {REPORT_CHART_TYPES.find((c) => c.k === active.chart)?.l || active.chart}
                   </Badge>
+                  <Badge color="slate">Owner: {active.owner}</Badge>
+                  {['locations', 'dispatches'].includes(active.source) && (
+                    <Badge color="slate">
+                      Density: {REPORT_MAP_DENSITIES.find((density) => density.k === active.mapDensity)?.l || active.mapDensity}
+                    </Badge>
+                  )}
                 </div>
                 <ReportPreview spec={active} data={chartData} />
                 <p className="mt-3 text-[11px] text-ink-faint">
-                  Preview uses seeded demo records · {chartData.length} groups shown
+                  {chartData.length} groups shown
                 </p>
               </>
             ) : (
@@ -552,11 +698,11 @@ export default function ReportsStudio({ view = 'reports' }) {
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
-          {specs.slice(0, 6).map((spec, index) => (
+          {filteredSpecs.slice(0, 6).map((spec, index) => (
             <button
               key={spec.id}
               type="button"
-              onClick={() => openEdit(spec)}
+              onClick={() => selectReport(spec)}
               className="bg-surface p-5 text-left interactive hover:bg-elevated/40"
             >
               <div className="flex items-start justify-between">

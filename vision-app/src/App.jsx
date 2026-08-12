@@ -4,6 +4,7 @@ import { useAuth } from './state/AuthContext.jsx';
 import { useAccounts } from './hooks/useAccounts.js';
 import { useCompleteOnboarding } from './hooks/useOnboarding.js';
 import TopBar from './components/TopBar.jsx';
+import SideNav from './components/SideNav.jsx';
 import GlobalAssistant from './components/GlobalAssistant.jsx';
 import { Toast } from './components/UI.jsx';
 import Login from './screens/Login.jsx';
@@ -21,6 +22,9 @@ import ContactsDirectory from './screens/ContactsDirectory.jsx';
 import MapCenter from './screens/MapCenter.jsx';
 import BulkImport from './screens/BulkImport.jsx';
 import ContractOnboarding from './screens/ContractOnboarding.jsx';
+import Activity from './screens/Activity.jsx';
+import Devices from './screens/Devices.jsx';
+import ReportSubscriptions from './screens/ReportSubscriptions.jsx';
 import { getErrorMessage } from './lib/errors.js';
 import { onboardingNavParams, parseOnboardingReturn } from './utils/appNavigation.js';
 
@@ -57,6 +61,9 @@ function Router({ onOnboard }) {
     individualTips: 'individualTips',
     mapCenter: 'mapCenter',
     bulkImport: 'bulkImport',
+    devices: 'devices',
+    activity: 'activity',
+    reportSubscriptions: 'reportSubscriptions',
     analytics: 'analytics',
     myLocations: 'myLocations',
     myWorkOrders: 'myWorkOrders',
@@ -114,6 +121,12 @@ function Router({ onOnboard }) {
       return <MapCenter />;
     case 'bulkImport':
       return <BulkImport />;
+    case 'devices':
+      return <Devices />;
+    case 'activity':
+      return <Activity />;
+    case 'reportSubscriptions':
+      return <ReportSubscriptions />;
     case 'onboarding': {
       const returnNav = parseOnboardingReturn(params);
       return (
@@ -184,17 +197,20 @@ export default function App() {
         Skip to main content
       </a>
       <TopBar />
-      <main
-        id="main-content"
-        tabIndex={-1}
-        className={
-          isOnboarding
-            ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
-            : 'min-h-0 flex-1 overflow-y-auto scroll-thin'
-        }
-      >
-        <Router onOnboard={openOnboard} />
-      </main>
+      <div className="flex min-h-0 flex-1">
+        {!isOnboarding && <SideNav />}
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className={
+            isOnboarding
+              ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+              : 'min-h-0 flex-1 overflow-y-auto scroll-thin'
+          }
+        >
+          <Router onOnboard={openOnboard} />
+        </main>
+      </div>
       <GlobalAssistant onOnboard={openOnboard} />
       <Toast message={state.toast} />
     </div>

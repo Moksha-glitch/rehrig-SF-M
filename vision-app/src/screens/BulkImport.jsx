@@ -16,36 +16,70 @@ import {
 } from '../components/UI.jsx';
 import { useStore } from '../state/AppStore.jsx';
 import { useAccounts } from '../hooks/useAccounts.js';
-import { useBulkImport } from '../hooks/useRecords.js';
+import { useBulkImport, useCreateRecord } from '../hooks/useRecords.js';
 import {
   useImportMapping,
   useImportMappingMutations,
 } from '../hooks/useConfig.js';
 import { getErrorMessage } from '../lib/errors.js';
+import { PICKLISTS } from '../data/picklists.js';
+import { RECORD_SCHEMAS } from '../data/recordSchemas.js';
+
+const HISTORY_KEY = '__importHistory';
 
 const OBJECTS = {
   'Work Orders': {
     columns: ['account', 'requestType', 'status', 'dueDate', 'subject'],
     kind: 'workOrders',
-    mode: 'operational',
+    mode: 'bulk',
+    required: ['account', 'requestType'],
+    enums: { requestType: PICKLISTS.requestType, status: PICKLISTS.workOrderStatus },
   },
   Locations: {
     columns: ['account', 'name', 'type', 'city', 'state', 'zip'],
     kind: 'locations',
-    mode: 'operational',
+    mode: 'bulk',
+    required: ['account', 'name'],
+    enums: { type: PICKLISTS.locationType, state: PICKLISTS.provinceState },
   },
   Assets: {
     columns: ['account', 'name', 'product', 'serial', 'status'],
     kind: 'assets',
-    mode: 'operational',
+    mode: 'bulk',
+    required: ['account', 'name'],
+    enums: { status: PICKLISTS.assetStatus },
   },
   Contacts: {
     columns: ['account', 'firstName', 'lastName', 'email', 'phone'],
-    mode: 'contact',
+    mode: 'bulk',
+    required: ['account', 'firstName'],
   },
   Routes: {
     columns: ['account', 'routeNumber', 'truck', 'driver', 'status'],
-    mode: 'route',
+    mode: 'bulk',
+    required: ['account', 'routeNumber'],
+    enums: { status: PICKLISTS.routeStatus },
+  },
+  Dispatches: {
+    columns: ['account', 'number', 'status', 'routeDate', 'truck', 'driver', 'serviceType'],
+    kind: 'dispatches',
+    mode: 'record',
+    required: ['account', 'routeDate'],
+    enums: { status: PICKLISTS.dispatchStatus, serviceType: PICKLISTS.serviceType },
+  },
+  Notes: {
+    columns: ['account', 'title', 'relatedTo', 'type', 'createdBy', 'created'],
+    kind: 'notesAttachments',
+    mode: 'record',
+    required: ['account', 'title'],
+    enums: { type: ['Note', 'Attachment'] },
+  },
+  Tips: {
+    columns: ['account', 'name', 'asset', 'type', 'truck', 'location', 'collectionRoute', 'timestamp'],
+    kind: 'individualTips',
+    mode: 'record',
+    required: ['account', 'name'],
+    enums: { type: ['Tip', 'Non-Tip'] },
   },
 };
 
@@ -83,10 +117,19 @@ function defaultMapping(columns) {
   };
 }
 
+function schemaFieldKeys(kind) {
+  const schema = RECORD_SCHEMAS[kind];
+  if (!schema) return [];
+  return schema.sections.flatMap((section) => section.fields.map((field) => field.key));
+}
+
 export default function BulkImport() {
   const { toast } = useStore();
   const accountsQuery = useAccounts();
   const bulkImport = useBulkImport();
+  const createDispatch = useCreateRecord('dispatches');
+  const createNote = useCreateRecord('notesAttachments');
+  const createTip = useCreateRecord('individualTips');
   const [object, setObject] = useState('Work Orders');
   const [fileName, setFileName] = useState('');
   const [preview, setPreview] = useState([]);
@@ -101,12 +144,17 @@ export default function BulkImport() {
   const columns = meta.columns;
   const accounts = accountsQuery.data || [];
   const mappingQuery = useImportMapping(object);
+  const historyQuery = useImportMapping(HISTORY_KEY);
   const { save: saveMapping } = useImportMappingMutations();
 
   const activeMapping = useMemo(
     () => mappingQuery.data || defaultMapping(columns),
     [mappingQuery.data, columns]
   );
+  const historyEntries = useMemo(() => {
+    const raw = historyQuery.data?.entries;
+    return Array.isArray(raw) ? raw : [];
+  }, [historyQuery.data]);
 
   useEffect(() => {
     setMappingDraft(null);
@@ -141,6 +189,18 @@ export default function BulkImport() {
       setMappingBaseline(null);
     } catch (error) {
       setMapError(getErrorMessage(error, 'Unable to save mapping.'));
+    }
+  };
+
+  const appendHistory = async (entry) => {
+    const nextEntries = [entry, ...historyEntries].slice(0, 50);
+    try {
+      await saveMapping.mutateAsync({
+        objectKey: HISTORY_KEY,
+        mapping: { ...(historyQuery.data || {}), entries: nextEntries },
+      });
+    } catch {
+      /* history persistence is best-effort */
     }
   };
 
@@ -179,13 +239,23 @@ export default function BulkImport() {
     const reverseMap = Object.fromEntries(
       Object.entries(activeMapping.columnMap || {}).map(([field, csvCol]) => [csvCol, field])
     );
-    const required = columns.slice(0, 2);
+    const required = meta.required || columns.slice(0, 2);
     const validation = required
       .filter((h) => {
         const csvName = activeMapping.columnMap?.[h] || h;
         return !headers.includes(csvName) && !headers.includes(h);
       })
       .map((h) => `Missing required column: ${activeMapping.columnMap?.[h] || h}`);
+
+    if (meta.kind) {
+      const known = new Set(schemaFieldKeys(meta.kind));
+      columns.forEach((field) => {
+        if (known.size && !known.has(field) && field !== 'account') {
+          validation.push(`Column “${field}” is not on the ${meta.kind} schema`);
+        }
+      });
+    }
+
     const rows = parsed.slice(1).map((cells, index) => {
       const raw = Object.fromEntries(headers.map((h, i) => [h, cells[i] || '']));
       const normalized = {};
@@ -205,26 +275,82 @@ export default function BulkImport() {
       if (row.account && !accountNames.has(row.account)) {
         validation.push(`Row ${row._row}: unknown account “${row.account}”`);
       }
+      Object.entries(meta.enums || {}).forEach(([field, options]) => {
+        const value = row[field];
+        if (!value) return;
+        const allowed = options.map((option) =>
+          option && typeof option === 'object' ? option.value ?? option.label : option
+        );
+        if (!allowed.includes(value)) {
+          validation.push(`Row ${row._row}: invalid ${field} “${value}”`);
+        }
+      });
     });
     setPreview(rows);
     setErrors(validation);
   };
 
+  const importRecordRows = async () => {
+    const creators = {
+      dispatches: createDispatch,
+      notesAttachments: createNote,
+      individualTips: createTip,
+    };
+    const createMutation = creators[meta.kind];
+    if (!createMutation) throw new Error(`No create path for ${object}.`);
+    let imported = 0;
+    let failed = 0;
+    for (const row of preview) {
+      try {
+        const { _row, ...payload } = row;
+        await createMutation.mutateAsync(payload);
+        imported += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    return { imported, failed };
+  };
+
   const importRows = async () => {
     try {
       if (activeMapping.dryRun) {
-        setSummary({
+        const drySummary = {
           imported: 0,
           failed: 0,
           object,
           dryRun: true,
           previewed: preview.length,
+        };
+        setSummary(drySummary);
+        await appendHistory({
+          id: `imp-${Date.now()}`,
+          object,
+          rowCount: preview.length,
+          status: 'Dry run',
+          timestamp: new Date().toISOString(),
         });
         toast(`Dry run · ${preview.length} rows would import`, 'success');
         return;
       }
-      const result = await bulkImport.mutateAsync({ object, rows: preview });
+
+      let result;
+      if (meta.mode === 'record') {
+        result = await importRecordRows();
+      } else {
+        result = await bulkImport.mutateAsync({ object, rows: preview });
+      }
+
       setSummary({ imported: result.imported, failed: result.failed, object });
+      await appendHistory({
+        id: `imp-${Date.now()}`,
+        object,
+        rowCount: preview.length,
+        status: result.failed ? 'Partial' : 'Complete',
+        imported: result.imported,
+        failed: result.failed,
+        timestamp: new Date().toISOString(),
+      });
       toast(
         result.failed
           ? `${result.imported} imported · ${result.failed} failed`
@@ -232,15 +358,29 @@ export default function BulkImport() {
         result.failed ? 'warning' : 'success'
       );
     } catch (error) {
+      await appendHistory({
+        id: `imp-${Date.now()}`,
+        object,
+        rowCount: preview.length,
+        status: 'Failed',
+        timestamp: new Date().toISOString(),
+      });
       toast(getErrorMessage(error, 'Import failed. Please try again.'), 'danger');
     }
   };
+
+  const importBusy =
+    bulkImport.isPending ||
+    createDispatch.isPending ||
+    createNote.isPending ||
+    createTip.isPending ||
+    saveMapping.isPending;
 
   return (
     <Page>
       <PageHeader
         overline="Tools"
-        title="Bulk Import"
+        title="Bulk Import (White Tool)"
         description="Upload a CSV to create records for this Service Provider. Portal customers are provisioned in identity systems, not here."
         actions={
           <Button variant="secondary" onClick={openMapping}>
@@ -301,7 +441,7 @@ export default function BulkImport() {
           </Button>
           <Button
             variant="primary"
-            disabled={!preview.length || errors.length > 0}
+            disabled={!preview.length || errors.length > 0 || importBusy}
             onClick={importRows}
           >
             <Icon name="download" size={15} />{' '}
@@ -309,6 +449,7 @@ export default function BulkImport() {
           </Button>
         </div>
       </Panel>
+
       {(preview.length > 0 || errors.length > 0) && (
         <Panel className="mt-5">
           <div className="flex items-center justify-between border-b border-line px-5 py-4">
@@ -342,6 +483,7 @@ export default function BulkImport() {
           )}
         </Panel>
       )}
+
       {summary && (
         <Panel className="mt-5 p-5">
           <p className="font-display text-title-sm text-ink">
@@ -354,6 +496,46 @@ export default function BulkImport() {
           </p>
         </Panel>
       )}
+
+      <Panel className="mt-5">
+        <div className="border-b border-line px-5 py-4">
+          <p className="type-overline">Import history</p>
+          <p className="mt-1 text-sm text-ink-muted">Past imports for this workspace</p>
+        </div>
+        <Table columns={['Object', 'Rows', 'Status', 'Timestamp']}>
+          {historyEntries.map((entry) => (
+            <tr key={entry.id}>
+              <td className="px-4 py-3 font-medium text-ink">{entry.object}</td>
+              <td className="mono px-4 py-3 text-ink-muted">{entry.rowCount ?? '—'}</td>
+              <td className="px-4 py-3">
+                <Badge
+                  color={
+                    entry.status === 'Complete'
+                      ? 'green'
+                      : entry.status === 'Failed'
+                        ? 'rose'
+                        : entry.status === 'Partial'
+                          ? 'amber'
+                          : 'slate'
+                  }
+                >
+                  {entry.status}
+                </Badge>
+              </td>
+              <td className="mono px-4 py-3 text-ink-muted">
+                {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '—'}
+              </td>
+            </tr>
+          ))}
+          {!historyEntries.length && (
+            <tr>
+              <td colSpan={4} className="px-4 py-10 text-center text-sm text-ink-muted">
+                No imports yet.
+              </td>
+            </tr>
+          )}
+        </Table>
+      </Panel>
 
       {mappingOpen && mappingDraft && (
         <FormDrawer

@@ -23,6 +23,15 @@ import { useContacts, useCreateContact, useUpdateContact } from '../hooks/useRec
 import { getErrorMessage } from '../lib/errors.js';
 import { PICKLISTS } from '../data/picklists.js';
 
+function contactStatus(contact) {
+  if (contact.status) return contact.status;
+  return contact.inactive || contact.active === false ? 'Inactive' : 'Active';
+}
+
+function contactStatusColor(contact) {
+  return contactStatus(contact) === 'Active' ? 'green' : 'slate';
+}
+
 function contactFormValues(contact, defaultAccountId = '') {
   return {
     accountId: contact?.accountId || defaultAccountId,
@@ -206,12 +215,13 @@ export default function ContactsDirectory() {
           </Toolbar>
           <Table
             columns={[
-              'Name',
+              'Contact Name',
               'Title',
               'Email',
               'Role',
               'Service Provider',
               'Segment',
+              'Status',
               'Portal Access',
               '',
             ]}
@@ -224,6 +234,9 @@ export default function ContactsDirectory() {
                 <td className="px-4 py-3 text-ink-muted">{c.roleTitle}</td>
                 <td className="px-4 py-3 text-ink-muted">{accById[c.accountId]}</td>
                 <td className="px-4 py-3 text-ink-muted">{c.segment}</td>
+                <td className="px-4 py-3">
+                  <Badge color={contactStatusColor(c)}>{contactStatus(c)}</Badge>
+                </td>
                 <td className="px-4 py-3">
                   {c.isUserCreated && c.isUserActive ? (
                     <Badge color="green">Portal User</Badge>
@@ -246,8 +259,8 @@ export default function ContactsDirectory() {
             ))}
             {!rows.length && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-sm text-ink-muted">
-                  {q ? 'No contacts match your search.' : 'No contacts are available in your scope.'}
+                <td colSpan={9} className="px-4 py-10 text-center text-sm text-ink-muted">
+                  {q ? 'No contacts match your search.' : 'No contacts yet.'}
                 </td>
               </tr>
             )}

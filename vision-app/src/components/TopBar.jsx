@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
 import AppLauncher from './AppLauncher.jsx';
 import { hasOpenOverlay } from './UI.jsx';
@@ -19,113 +18,27 @@ function initials(name) {
   return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
 }
 
-const MENU_MIN_WIDTH = 224;
-
-function NavDropdown({ section, activeModule, activeParams, onNavigate }) {
-  const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState(null);
-  const triggerRef = useRef(null);
-  const menuRef = useRef(null);
-  const sectionActive = section.children.some((c) =>
-    isNavItemActive(c, activeModule, activeParams)
-  );
-
-  const place = useCallback(() => {
-    const rect = triggerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const width = Math.max(rect.width, MENU_MIN_WIDTH);
-    const maxLeft = Math.max(8, window.innerWidth - width - 8);
-    setPosition({
-      top: rect.bottom + 6,
-      left: Math.min(Math.max(8, rect.left), maxLeft),
-      minWidth: width,
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    place();
-    const onPointerDown = (event) => {
-      if (triggerRef.current?.contains(event.target)) return;
-      if (menuRef.current?.contains(event.target)) return;
-      setOpen(false);
-    };
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    const onScroll = (event) => {
-      if (menuRef.current?.contains(event.target)) return;
-      place();
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    window.addEventListener('resize', place);
-    document.addEventListener('scroll', onScroll, true);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('resize', place);
-      document.removeEventListener('scroll', onScroll, true);
-    };
-  }, [open, place]);
-
-  return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        className={`inline-flex shrink-0 items-center gap-1 rounded-control px-2.5 py-1.5 text-sm font-medium interactive ${
-          sectionActive || open
-            ? 'bg-elevated text-ink'
-            : 'text-ink-muted hover:bg-elevated hover:text-ink'
-        }`}
-      >
-        {section.label}
-        <Icon name="chevronDown" size={13} className={`transition ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open &&
-        position &&
-        createPortal(
-          <div
-            ref={menuRef}
-            role="menu"
-            aria-label={section.label}
-            style={{ top: position.top, left: position.left, minWidth: position.minWidth }}
-            className="fixed z-40 max-h-[min(70vh,32rem)] overflow-y-auto rounded-panel border border-line bg-surface p-1.5 shadow-float scroll-thin"
-          >
-            {section.children.map((item) => {
-              const active = isNavItemActive(item, activeModule, activeParams);
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    onNavigate(item);
-                    setOpen(false);
-                  }}
-                  className={`flex w-full items-center gap-2 rounded-control px-3 py-2 text-left text-sm interactive ${
-                    active
-                      ? 'bg-elevated font-medium text-ink'
-                      : 'text-ink-muted hover:bg-elevated hover:text-ink'
-                  }`}
-                >
-                  {item.icon && (
-                    <Icon name={item.icon} size={14} className="shrink-0 text-ink-faint" />
-                  )}
-                  <span className="truncate">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>,
-          document.body
-        )}
-    </>
-  );
-}
+const HELP_RESOURCES = [
+  {
+    label: 'Guided onboarding',
+    detail: 'Walk a new Service Provider through setup step by step.',
+    module: 'onboarding',
+    icon: 'building',
+  },
+  {
+    label: 'Bulk Import (White Tool)',
+    detail: 'Map spreadsheet columns and load records in bulk.',
+    module: 'bulkImport',
+    icon: 'download',
+  },
+  {
+    label: 'Workspace settings',
+    detail: 'Users, permission sets, licenses and defaults.',
+    module: 'setup',
+    params: { section: 'userMgmt' },
+    icon: 'settings',
+  },
+];
 
 function SearchField({
   query,
@@ -133,6 +46,7 @@ function SearchField({
   searchOpen,
   setSearchOpen,
   results,
+  groups,
   activeResult,
   setActiveResult,
   chooseResult,
@@ -166,7 +80,7 @@ function SearchField({
           }}
           onFocus={() => setSearchOpen(true)}
           onKeyDown={onSearchKeyDown}
-          placeholder="Search…"
+          placeholder="Jump to anywhere…"
           role="combobox"
           aria-autocomplete="list"
           aria-expanded={searchOpen && query.trim().length >= 2}
@@ -184,22 +98,33 @@ function SearchField({
           className="absolute left-0 right-0 top-[calc(100%+0.55rem)] z-40 max-h-80 overflow-y-auto rounded-panel border border-line bg-surface p-1.5 shadow-float scroll-thin"
         >
           {results.length ? (
-            results.map((result, index) => (
-              <button
-                id={`${listboxId}-option-${index}`}
-                key={result.id}
-                type="button"
-                role="option"
-                aria-selected={activeResult === index}
-                onMouseEnter={() => setActiveResult(index)}
-                onClick={() => chooseResult(result)}
-                className={`block w-full rounded-control px-3 py-2.5 text-left ${
-                  activeResult === index ? 'bg-elevated' : 'hover:bg-elevated'
-                }`}
-              >
-                <span className="block truncate text-sm font-medium text-ink">{result.label}</span>
-                <span className="mt-0.5 block truncate text-xs text-ink-muted">{result.meta}</span>
-              </button>
+            groups.map((group) => (
+              <div key={group.label} role="group" aria-label={group.label} className="mb-1 last:mb-0">
+                <div className="px-3 pb-1 pt-2 type-overline">{group.label}</div>
+                {group.items.map((result) => (
+                  <button
+                    id={`${listboxId}-option-${result.index}`}
+                    key={result.id}
+                    type="button"
+                    role="option"
+                    aria-selected={activeResult === result.index}
+                    onMouseEnter={() => setActiveResult(result.index)}
+                    onClick={() => chooseResult(result)}
+                    className={`block w-full rounded-control px-3 py-2 text-left ${
+                      activeResult === result.index ? 'bg-elevated' : 'hover:bg-elevated'
+                    }`}
+                  >
+                    <span className="block truncate text-sm font-medium text-ink">
+                      {result.label}
+                    </span>
+                    {result.meta && (
+                      <span className="mt-0.5 block truncate text-xs text-ink-muted">
+                        {result.meta}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
             ))
           ) : (
             <div className="px-3 py-5 text-center text-sm text-ink-muted">
@@ -208,6 +133,196 @@ function SearchField({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function HelpMenu({ open, onToggle, onClose, onAskAi, canAccessModule, navigate, panelClassName }) {
+  const resources = HELP_RESOURCES.filter((item) => canAccessModule(item.module));
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`rounded-control p-1.5 interactive ${
+          open ? 'bg-elevated text-ink' : 'text-ink-muted hover:bg-elevated hover:text-ink'
+        }`}
+        aria-label="Help & Training"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        title="Help & Training"
+      >
+        <Icon name="help" size={17} />
+      </button>
+      {open && (
+        <section role="dialog" aria-label="Help & Training" className={panelClassName}>
+          <div className="border-b border-line px-4 py-3">
+            <h2 className="font-display text-title-sm text-ink">Help &amp; Training</h2>
+            <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+              Guided flows, support contacts and the AI assistant.
+            </p>
+          </div>
+          <div className="p-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onAskAi();
+              }}
+              className="flex w-full items-start gap-2.5 rounded-control px-3 py-2.5 text-left hover:bg-elevated"
+            >
+              <Icon name="star" size={15} className="mt-0.5 text-brand" />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-ink">Ask the AI assistant</span>
+                <span className="mt-0.5 block text-xs text-ink-muted">
+                  Answers grounded in this workspace.
+                </span>
+              </span>
+            </button>
+            {resources.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate(item.module, item.params || {});
+                }}
+                className="flex w-full items-start gap-2.5 rounded-control px-3 py-2.5 text-left hover:bg-elevated"
+              >
+                <Icon name={item.icon} size={15} className="mt-0.5 text-ink-faint" />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-ink">{item.label}</span>
+                  <span className="mt-0.5 block text-xs text-ink-muted">{item.detail}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="border-t border-line p-1.5">
+            <a
+              href="mailto:helpdesk@rehrigpacific.com"
+              onClick={onClose}
+              className="flex items-center gap-2.5 rounded-control px-3 py-2.5 text-sm text-ink-muted hover:bg-elevated hover:text-ink"
+            >
+              <Icon name="mail" size={15} className="text-ink-faint" />
+              Email the Vision helpdesk
+            </a>
+            <a
+              href="https://www.rehrigpacific.com/contact"
+              target="_blank"
+              rel="noreferrer"
+              onClick={onClose}
+              className="flex items-center gap-2.5 rounded-control px-3 py-2.5 text-sm text-ink-muted hover:bg-elevated hover:text-ink"
+            >
+              <Icon name="arrowUpRight" size={15} className="text-ink-faint" />
+              Rehrig Pacific support
+            </a>
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
+
+function UserMenu({
+  user,
+  persona,
+  scopedAccount,
+  isScoped,
+  canPreviewPersonas,
+  personaViews,
+  previewPersona,
+  exitPersonaPreview,
+  previewOrigin,
+  isPreviewingPersona,
+  navigate,
+  logout,
+  onClose,
+}) {
+  return (
+    <div
+      role="menu"
+      className="absolute right-0 top-[calc(100%+0.45rem)] z-40 w-64 rounded-panel border border-line bg-surface p-1.5 shadow-float"
+    >
+      <div className="border-b border-line px-3 py-2.5">
+        <div className="truncate text-sm font-medium text-ink">{user?.name}</div>
+        <div className="truncate text-xs text-ink-muted">{user?.role}</div>
+        {scopedAccount && (
+          <div className="mt-1 truncate text-[11px] text-ink-faint">
+            {scopedAccount.name}
+            {isScoped && user?.scopeLabel ? ` · ${user.scopeLabel}` : ''}
+          </div>
+        )}
+      </div>
+      {persona === 'rehrig' && (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            navigate('setup', { section: 'account' });
+            onClose();
+          }}
+          className="mt-1 flex w-full rounded-control px-3 py-2 text-left text-sm text-ink-muted interactive hover:bg-elevated hover:text-ink"
+        >
+          Your Account
+        </button>
+      )}
+      {canPreviewPersonas && (
+        <div className="mt-1 border-t border-line pt-1">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 type-overline">
+            <Icon name="eye" size={12} />
+            View as
+          </div>
+          {personaViews.map((view) => {
+            const active = view.id === user?.id;
+            return (
+              <button
+                key={view.id}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  if (!active) previewPersona(view.id);
+                  onClose();
+                }}
+                className={`flex w-full items-center gap-2 rounded-control px-3 py-2 text-left text-sm interactive ${
+                  active ? 'bg-elevated text-ink' : 'text-ink-muted hover:bg-elevated hover:text-ink'
+                }`}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{view.name}</span>
+                  <span className="block truncate text-[11px] text-ink-faint">{view.label}</span>
+                </span>
+                {active && <Icon name="check" size={13} className="text-brand" />}
+              </button>
+            );
+          })}
+          {isPreviewingPersona && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                exitPersonaPreview();
+                onClose();
+              }}
+              className="mt-0.5 flex w-full items-center gap-2 rounded-control bg-warn-soft px-3 py-2 text-left text-sm font-medium text-warn interactive hover:brightness-95"
+            >
+              <Icon name="logout" size={14} />
+              Exit preview — {previewOrigin?.name}
+            </button>
+          )}
+        </div>
+      )}
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => {
+          logout();
+          onClose();
+        }}
+        className="mt-1 flex w-full items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-ink-muted interactive hover:bg-elevated hover:text-ink"
+      >
+        <Icon name="logout" size={14} />
+        Sign out
+      </button>
     </div>
   );
 }
@@ -224,6 +339,13 @@ export default function TopBar() {
     isScoped,
     openAssistant,
     assistantOpen,
+    canPreviewPersonas,
+    personaViews,
+    previewPersona,
+    exitPersonaPreview,
+    previewOrigin,
+    isPreviewingPersona,
+    psgLabel,
   } = useStore();
   const notificationsQuery = useNotifications();
   const { markOne, markAll } = useMarkNotifications();
@@ -236,6 +358,7 @@ export default function TopBar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState({});
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(-1);
   const searchRef = useRef(null);
@@ -244,6 +367,8 @@ export default function TopBar() {
   const notificationMobileRef = useRef(null);
   const userMenuDesktopRef = useRef(null);
   const userMenuMobileRef = useRef(null);
+  const helpDesktopRef = useRef(null);
+  const helpMobileRef = useRef(null);
   const listboxId = useId();
   const mobileListboxId = useId();
 
@@ -258,10 +383,23 @@ export default function TopBar() {
   );
 
   const resultsQuery = useSearch(query);
-  const results = (resultsQuery.data || []).map((item) => ({
-    ...item,
-    label: item.title || item.label,
-  }));
+  const results = useMemo(
+    () =>
+      (resultsQuery.data || []).map((item) => ({
+        ...item,
+        label: item.title || item.label,
+      })),
+    [resultsQuery.data]
+  );
+  const resultGroups = useMemo(() => {
+    const map = new Map();
+    results.forEach((result, index) => {
+      const label = result.category || result.meta || 'Results';
+      if (!map.has(label)) map.set(label, []);
+      map.get(label).push({ ...result, index });
+    });
+    return [...map.entries()].map(([label, items]) => ({ label, items }));
+  }, [results]);
   const notifications = (notificationsQuery.data || []).filter(
     (item) => !item.module || canAccessModule(item.module)
   );
@@ -295,6 +433,10 @@ export default function TopBar() {
         userMenuDesktopRef.current?.contains(event.target) ||
         userMenuMobileRef.current?.contains(event.target);
       if (!inUser) setUserMenuOpen(false);
+      const inHelp =
+        helpDesktopRef.current?.contains(event.target) ||
+        helpMobileRef.current?.contains(event.target);
+      if (!inHelp) setHelpOpen(false);
     };
     const onKeyDown = (event) => {
       // A modal drawer/dialog owns Escape while it is open.
@@ -305,6 +447,7 @@ export default function TopBar() {
         setUserMenuOpen(false);
         setMobileOpen(false);
         setLauncherOpen(false);
+        setHelpOpen(false);
       }
     };
     document.addEventListener('pointerdown', onPointerDown);
@@ -357,7 +500,38 @@ export default function TopBar() {
     setNotificationOpen(false);
     setUserMenuOpen(false);
     setMobileOpen(false);
+    setHelpOpen(false);
     openAssistant();
+  };
+
+  const helpProps = {
+    open: helpOpen,
+    onToggle: () => {
+      setHelpOpen((open) => !open);
+      setNotificationOpen(false);
+      setUserMenuOpen(false);
+      setSearchOpen(false);
+    },
+    onClose: () => setHelpOpen(false),
+    onAskAi: openAi,
+    canAccessModule,
+    navigate,
+  };
+
+  const userMenuProps = {
+    user,
+    persona,
+    scopedAccount,
+    isScoped,
+    canPreviewPersonas,
+    personaViews,
+    previewPersona,
+    exitPersonaPreview,
+    previewOrigin,
+    isPreviewingPersona,
+    navigate,
+    logout,
+    onClose: () => setUserMenuOpen(false),
   };
 
   const searchProps = {
@@ -366,6 +540,7 @@ export default function TopBar() {
     searchOpen,
     setSearchOpen,
     results,
+    groups: resultGroups,
     activeResult,
     setActiveResult,
     chooseResult,
@@ -410,42 +585,6 @@ export default function TopBar() {
                 ops
               </span>
             </button>
-
-            <nav
-              className="ml-1 flex min-w-0 items-center gap-0.5 overflow-x-auto overflow-y-visible scroll-thin"
-              aria-label="Primary"
-            >
-              {tree.map((node) => {
-                if (node.type === 'item') {
-                  const active = isNavItemActive(node, activeModule, activeParams);
-                  return (
-                    <button
-                      key={node.key}
-                      type="button"
-                      onClick={() => goTo(node)}
-                      aria-current={active ? 'page' : undefined}
-                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-control px-2.5 py-1.5 text-sm font-medium interactive ${
-                        active
-                          ? 'bg-elevated text-ink'
-                          : 'text-ink-muted hover:bg-elevated hover:text-ink'
-                      }`}
-                    >
-                      {node.icon && <Icon name={node.icon} size={14} className="text-ink-faint" />}
-                      {node.label}
-                    </button>
-                  );
-                }
-                return (
-                  <NavDropdown
-                    key={node.label}
-                    section={node}
-                    activeModule={activeModule}
-                    activeParams={activeParams}
-                    onNavigate={goTo}
-                  />
-                );
-              })}
-            </nav>
           </div>
 
           <SearchField
@@ -485,13 +624,12 @@ export default function TopBar() {
               AI Assistant
             </button>
 
-            <a
-              href="mailto:helpdesk@rehrigpacific.com"
-              className="rounded-control p-1.5 text-ink-muted interactive hover:bg-elevated hover:text-ink"
-              aria-label="Contact helpdesk"
-            >
-              <Icon name="help" size={17} />
-            </a>
+            <div ref={helpDesktopRef} className="relative">
+              <HelpMenu
+                {...helpProps}
+                panelClassName="absolute right-0 top-[calc(100%+0.65rem)] z-40 w-80 rounded-panel border border-line bg-surface shadow-float"
+              />
+            </div>
             <div ref={notificationDesktopRef} className="relative">
               <button
                 type="button"
@@ -586,50 +724,14 @@ export default function TopBar() {
                 <span className="hidden max-w-[7rem] truncate text-xs font-medium text-ink xl:inline">
                   {user?.name}
                 </span>
+                {isPreviewingPersona && (
+                  <span className="hidden rounded-control bg-warn-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warn xl:inline">
+                    Preview
+                  </span>
+                )}
                 <Icon name="chevronDown" size={12} className="text-ink-faint" />
               </button>
-              {userMenuOpen && (
-                <div
-                  role="menu"
-                  className="absolute right-0 top-[calc(100%+0.45rem)] z-40 w-56 rounded-panel border border-line bg-surface p-1.5 shadow-float"
-                >
-                  <div className="border-b border-line px-3 py-2.5">
-                    <div className="truncate text-sm font-medium text-ink">{user?.name}</div>
-                    <div className="truncate text-xs text-ink-muted">{user?.role}</div>
-                    {scopedAccount && (
-                      <div className="mt-1 truncate text-[11px] text-ink-faint">
-                        {scopedAccount.name}
-                        {isScoped && user?.scopeLabel ? ` · ${user.scopeLabel}` : ''}
-                      </div>
-                    )}
-                  </div>
-                  {persona === 'rehrig' && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        navigate('setup', { section: 'account' });
-                        setUserMenuOpen(false);
-                      }}
-                      className="mt-1 flex w-full rounded-control px-3 py-2 text-left text-sm text-ink-muted interactive hover:bg-elevated hover:text-ink"
-                    >
-                      Your Account
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      logout();
-                      setUserMenuOpen(false);
-                    }}
-                    className="flex w-full items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-ink-muted interactive hover:bg-elevated hover:text-ink"
-                  >
-                    <Icon name="logout" size={14} />
-                    Sign out
-                  </button>
-                </div>
-              )}
+              {userMenuOpen && <UserMenu {...userMenuProps} />}
             </div>
           </div>
         </div>
@@ -723,13 +825,12 @@ export default function TopBar() {
             >
               <Icon name="star" size={17} />
             </button>
-            <a
-              href="mailto:helpdesk@rehrigpacific.com"
-              className="rounded-control p-1.5 text-ink-muted interactive hover:bg-elevated hover:text-ink"
-              aria-label="Contact helpdesk"
-            >
-              <Icon name="help" size={17} />
-            </a>
+            <div ref={helpMobileRef} className="relative">
+              <HelpMenu
+                {...helpProps}
+                panelClassName="fixed left-3 right-3 top-[3.75rem] z-40 rounded-panel border border-line bg-surface shadow-float"
+              />
+            </div>
             <div ref={notificationMobileRef} className="relative">
               <button
                 type="button"
@@ -820,56 +921,37 @@ export default function TopBar() {
                 aria-expanded={userMenuOpen}
                 aria-haspopup="menu"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-control bg-ink text-[10px] font-semibold text-white">
+                <span
+                  className={`flex h-7 w-7 items-center justify-center rounded-control text-[10px] font-semibold text-white ${
+                    isPreviewingPersona ? 'bg-warn' : 'bg-ink'
+                  }`}
+                >
                   {initials(user?.name)}
                 </span>
                 <Icon name="chevronDown" size={12} className="text-ink-faint" />
               </button>
-              {userMenuOpen && (
-                <div
-                  role="menu"
-                  className="absolute right-0 top-[calc(100%+0.45rem)] z-40 w-56 rounded-panel border border-line bg-surface p-1.5 shadow-float"
-                >
-                  <div className="border-b border-line px-3 py-2.5">
-                    <div className="truncate text-sm font-medium text-ink">{user?.name}</div>
-                    <div className="truncate text-xs text-ink-muted">{user?.role}</div>
-                    {scopedAccount && (
-                      <div className="mt-1 truncate text-[11px] text-ink-faint">
-                        {scopedAccount.name}
-                        {isScoped && user?.scopeLabel ? ` · ${user.scopeLabel}` : ''}
-                      </div>
-                    )}
-                  </div>
-                  {persona === 'rehrig' && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        navigate('setup', { section: 'account' });
-                        setUserMenuOpen(false);
-                      }}
-                      className="mt-1 flex w-full rounded-control px-3 py-2 text-left text-sm text-ink-muted interactive hover:bg-elevated hover:text-ink"
-                    >
-                      Your Account
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      logout();
-                      setUserMenuOpen(false);
-                    }}
-                    className="flex w-full items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-ink-muted interactive hover:bg-elevated hover:text-ink"
-                  >
-                    <Icon name="logout" size={14} />
-                    Sign out
-                  </button>
-                </div>
-              )}
+              {userMenuOpen && <UserMenu {...userMenuProps} />}
             </div>
           </div>
         </div>
+
+        {isPreviewingPersona && (
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t border-line bg-warn-soft px-4 py-2 text-xs text-warn sm:px-5">
+            <Icon name="eye" size={14} />
+            <span className="font-semibold uppercase tracking-wide">Admin preview</span>
+            <span className="min-w-0 truncate">
+              Viewing Vision as {user?.name} · {user?.role}
+              {psgLabel ? ` · ${psgLabel}` : ''}
+            </span>
+            <button
+              type="button"
+              onClick={exitPersonaPreview}
+              className="ml-auto font-semibold underline hover:no-underline"
+            >
+              Back to {previewOrigin?.name}
+            </button>
+          </div>
+        )}
 
         {mobileSearchOpen && (
           <div className="border-t border-line px-3 py-2.5 sm:px-5 lg:hidden">
@@ -988,6 +1070,17 @@ export default function TopBar() {
                 >
                   <Icon name="star" size={15} className="text-brand" />
                   AI Assistant
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setHelpOpen(true);
+                  }}
+                  className="mb-0.5 flex w-full items-center gap-2.5 rounded-control px-3 py-2.5 text-left text-sm text-ink-muted hover:bg-elevated"
+                >
+                  <Icon name="help" size={15} className="text-ink-faint" />
+                  Help &amp; Training
                 </button>
               </div>
             </nav>

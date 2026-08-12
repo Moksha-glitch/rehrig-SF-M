@@ -20,7 +20,7 @@ import { useDeleteDraft, useDrafts } from '../hooks/useOnboarding.js';
 import { getErrorMessage } from '../lib/errors.js';
 
 export default function AccountsList({ onOnboard }) {
-  const { navigate, canCreateAccounts, isScoped, toast } = useStore();
+  const { navigate, canCreateAccounts, isScoped, toast, state, isFollowingAccount } = useStore();
   const accountsQuery = useAccounts();
   const draftsQuery = useDrafts();
   const deleteDraftMutation = useDeleteDraft();
@@ -51,21 +51,20 @@ export default function AccountsList({ onOnboard }) {
         overline="Directory"
         title="Service Providers"
         description={
-          <span className="flex flex-wrap items-center gap-2">
+          <span>
             <span className="mono tabular-nums">{scopedAccounts.filter((a) => !a.inactive).length}</span> active ·{' '}
             <span className="mono tabular-nums">{scopedAccounts.length}</span> total
             {drafts.length > 0 && (
               <>
-                <span className="text-ink-faint">·</span>
-                <span className="mono tabular-nums">{drafts.length}</span> draft
+                {' '}
+                · <span className="mono tabular-nums">{drafts.length}</span> draft
                 {drafts.length === 1 ? '' : 's'}
               </>
             )}
-            {isScoped && (
-              <Badge color="cyan">
-                <Icon name="filter" size={11} /> Scoped view
-              </Badge>
+            {isScoped && state.currentUser?.scopeLabel && (
+              <span className="text-ink-faint"> · {state.currentUser.scopeLabel}</span>
             )}
+            {!canCreateAccounts && <span className="text-ink-faint"> · View only</span>}
           </span>
         }
         actions={
@@ -88,11 +87,30 @@ export default function AccountsList({ onOnboard }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search accounts…"
+            label="Search accounts"
           />
-          <select className="field-input max-w-[160px]" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option>All</option><option>Active</option><option>Inactive</option>
+          <select
+            aria-label="Filter by status"
+            className="field-input max-w-[160px]"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option>All</option>
+            <option>Active</option>
+            <option>Inactive</option>
           </select>
-          {(q || status !== 'All') && <button className="link-brand text-xs" onClick={() => { setQ(''); setStatus('All'); }}>Clear filters</button>}
+          {(q || status !== 'All') && (
+            <button
+              type="button"
+              className="link-brand text-xs"
+              onClick={() => {
+                setQ('');
+                setStatus('All');
+              }}
+            >
+              Clear filters
+            </button>
+          )}
         </Toolbar>
         <Table columns={['#', 'Account Name', 'Industry', 'Phone', 'Owner', 'Residents', 'Status', '']}>
           {providerRows.map((a, i) => (
@@ -100,10 +118,16 @@ export default function AccountsList({ onOnboard }) {
               <td className="mono px-4 py-3 text-ink-faint tabular-nums">{i + 1}</td>
               <td className="px-4 py-3">
                 <button
+                  type="button"
                   onClick={() => navigate('accountDetail', { accountId: a.id, tab: 'details' })}
                   className="link-brand flex items-center gap-2 text-left"
                 >
                   {a.name}
+                  {isFollowingAccount?.(a.id) && (
+                    <span title="Following" aria-label="Following">
+                      <Icon name="bookmark" size={12} className="text-brand" aria-hidden="true" />
+                    </span>
+                  )}
                   <span className="flex items-center gap-1">
                     <AccountBadges account={a} />
                   </span>
