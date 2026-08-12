@@ -69,6 +69,12 @@ export const REPORT_SORT_BY = [
   { k: 'name', l: 'Group name' },
 ];
 
+export const REPORT_MAP_DENSITIES = [
+  { k: 'concentrated', l: 'Concentrated' },
+  { k: 'sparse', l: 'Sparse' },
+  { k: 'low-volume', l: 'Low volume' },
+];
+
 export function blankReportSpec(overrides = {}) {
   return {
     id: null,
@@ -86,6 +92,15 @@ export function blankReportSpec(overrides = {}) {
     yMax: '',
     showLegend: true,
     showLabels: false,
+    mapDensity: 'concentrated',
+    ownerId: '',
+    owner: '',
+    sharedWith: [],
+    visibility: 'private',
+    favorite: false,
+    lastViewed: '',
+    category: 'Operations',
+    template: false,
     ...overrides,
   };
 }
@@ -99,6 +114,13 @@ export const SEED_REPORT_SPECS = [
     groupBy: 'priority',
     chart: 'bar',
     timeframe: 'last30d',
+    ownerId: 'u-hrehrig',
+    owner: 'Helena Rehrig',
+    sharedWith: ['*'],
+    visibility: 'public',
+    favorite: true,
+    lastViewed: '2026-08-10T14:30:00.000Z',
+    category: 'SLA & Compliance',
   }),
   blankReportSpec({
     id: 'rpt-sla-account',
@@ -108,6 +130,10 @@ export const SEED_REPORT_SPECS = [
     groupBy: 'account',
     chart: 'progress',
     timeframe: 'last90d',
+    ownerId: 'u-avolkov',
+    owner: 'Anton Volkov',
+    sharedWith: ['*'],
+    category: 'Customer Insights',
   }),
   blankReportSpec({
     id: 'rpt-truck-util',
@@ -117,6 +143,12 @@ export const SEED_REPORT_SPECS = [
     groupBy: 'status',
     chart: 'donut',
     timeframe: 'all',
+    ownerId: 'u-hrehrig',
+    owner: 'Helena Rehrig',
+    visibility: 'public',
+    favorite: true,
+    lastViewed: '2026-08-08T09:15:00.000Z',
+    category: 'Fleet Health',
   }),
   blankReportSpec({
     id: 'rpt-assets-family',
@@ -126,15 +158,24 @@ export const SEED_REPORT_SPECS = [
     groupBy: 'product',
     chart: 'donut',
     timeframe: 'all',
+    ownerId: 'u-avolkov',
+    owner: 'Anton Volkov',
+    sharedWith: ['u-hrehrig'],
+    category: 'Fleet Health',
+    template: true,
   }),
   blankReportSpec({
     id: 'rpt-dispatch-day',
     name: 'Dispatches by Status',
-    desc: 'Dispatch pipeline snapshot.',
+    desc: 'Dispatch pipeline by status.',
     source: 'dispatches',
     groupBy: 'status',
     chart: 'area',
     timeframe: 'last7d',
+    ownerId: 'u-hrehrig',
+    owner: 'Helena Rehrig',
+    category: 'Operations',
+    lastViewed: '2026-08-11T11:00:00.000Z',
   }),
   blankReportSpec({
     id: 'rpt-tips-material',
@@ -144,10 +185,14 @@ export const SEED_REPORT_SPECS = [
     groupBy: 'material',
     chart: 'bar',
     timeframe: 'last30d',
+    ownerId: 'u-avolkov',
+    owner: 'Anton Volkov',
+    visibility: 'public',
+    category: 'Operations',
   }),
 ];
 
-/** Aggregate demo rows for a report spec (local preview only). */
+/** Aggregate records into grouped chart data for a report spec. */
 export function aggregateReportRows(rows, spec) {
   const groupBy = spec.groupBy || 'status';
   const subGroupBy = spec.subGroupBy || '';

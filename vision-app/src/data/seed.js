@@ -292,10 +292,10 @@ export const API_INTEGRATIONS = [
 // ---- Service Notification Config rules (Ch.21, Ch.21.6) ----
 export const NOTIFICATION_CONFIG = [
   { id: 'nc-1', enabled: true, name: 'Work Order Completed', event: 'work_order.completed', channel: 'SMS', priority: 'High' },
-  { id: 'nc-2', enabled: true, name: 'Delivery Scheduled', event: 'work_order.delivery_scheduled', channel: 'Email', priority: 'Normal' },
+  { id: 'nc-2', enabled: true, name: 'Delivery Scheduled', event: 'work_order.delivery_scheduled', channel: 'Email', priority: 'Medium' },
   { id: 'nc-3', enabled: true, name: 'Missed Pickup Reported', event: 'work_order.missed_pickup', channel: 'SMS', priority: 'High' },
   { id: 'nc-4', enabled: false, name: 'Route Delayed', event: 'route.delayed', channel: 'Email', priority: 'Low' },
-  { id: 'nc-5', enabled: true, name: 'Cart Delivered', event: 'asset.delivered', channel: 'Phone', priority: 'Normal' },
+  { id: 'nc-5', enabled: true, name: 'Cart Delivered', event: 'asset.delivered', channel: 'Phone', priority: 'Medium' },
 ];
 
 // ---- Master configuration vocabularies (Ch.21) ----
@@ -314,7 +314,7 @@ export const CONFIG_LOCATION_TYPES = [
   { id: 'lt-7', name: 'Site', description: 'Industrial or construction site' },
   { id: 'lt-8', name: 'Rehrig Manufacturing', description: 'Rehrig own facility — used internally' },
   { id: 'lt-9', name: 'Other Yard', description: 'External third-party depot' },
-  { id: 'lt-10', name: 'UNASSIGNED-WOIT', description: 'Placeholder for unmatched geocoding imports' },
+  { id: 'lt-10', name: 'UNASSIGNED-WOIT', description: 'Catch-all for unmatched geocoding imports' },
 ];
 export const CONFIG_ASSET_TYPES = [
   { id: 'at-1', name: 'Roll-Out Cart', description: 'Standard wheeled residential cart' },

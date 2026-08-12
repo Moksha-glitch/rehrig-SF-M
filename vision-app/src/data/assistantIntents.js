@@ -193,7 +193,7 @@ export const PERSONA_CONTENT = {
       {
         terms: ['notification', 'message', 'reminder', 'delivery'],
         reply:
-          'My Notifications contains your recent collection reminders, delivery updates, and service messages.',
+          'Notifications contains your recent collection reminders, delivery updates, and service messages.',
         action: { label: 'View notifications', module: 'myNotifications' },
       },
       {

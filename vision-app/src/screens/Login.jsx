@@ -3,7 +3,6 @@ import Icon from '../components/Icon.jsx';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useDemoUsers } from '../hooks/useDemoUsers.js';
 import { getErrorMessage } from '../lib/errors.js';
-import { isDemoMode } from '../config/appMode.js';
 
 const PERSONA_TABS = [
   { key: 'rehrig', label: 'Rehrig' },
@@ -96,7 +95,7 @@ export default function Login() {
 
   const useDemoUser = (user) => {
     if (!user.active) {
-      setFormError('This demo account is inactive and cannot sign in.');
+      setFormError('This account is inactive and cannot sign in.');
       return;
     }
     setUsername(user.email);
@@ -108,7 +107,7 @@ export default function Login() {
   const startSso = () => {
     setFieldErrors({});
     setFormError(
-      'Rehrig SSO is not configured in this local environment. Contact your administrator for access.'
+      'Single sign-on must be enabled for your organization. Contact your administrator to request access.'
     );
   };
 
@@ -332,7 +331,7 @@ export default function Login() {
               aria-controls={demoPanelId}
               className="group flex w-full items-center justify-between gap-3 text-left text-[11px] text-ink-faint interactive hover:text-ink-muted"
             >
-              <span>Demo access</span>
+              <span>Sample roles</span>
               <Icon
                 name={demoOpen ? 'chevronDown' : 'chevronRight'}
                 size={12}
@@ -346,10 +345,10 @@ export default function Login() {
                 id={demoPanelId}
                 className="mt-3 animate-fade-in"
                 role="region"
-                aria-label="Demo personas"
+                aria-label="Sample roles"
               >
                 <p className="mb-3 text-[11px] leading-relaxed text-ink-faint">
-                  {isDemoMode() ? 'Local seed accounts' : 'API demo accounts'} · password{' '}
+                  Sign in as a sample role · password{' '}
                   <span className="mono font-medium text-ink-muted">vision</span>
                 </p>
 
@@ -360,7 +359,7 @@ export default function Login() {
                 )}
                 {demoUsersQuery.isError && (
                   <p className="py-2 text-xs text-danger" role="alert">
-                    {getErrorMessage(demoUsersQuery.error, 'Could not load demo accounts.')}
+                    {getErrorMessage(demoUsersQuery.error, 'Could not load sample accounts.')}
                   </p>
                 )}
 
@@ -368,7 +367,7 @@ export default function Login() {
                   id={tablistId}
                   className="mb-2 flex gap-1"
                   role="tablist"
-                  aria-label="Demo persona"
+                  aria-label="Sample role"
                 >
                   {PERSONA_TABS.map((tab) => (
                     <button

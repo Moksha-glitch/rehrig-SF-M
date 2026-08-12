@@ -13,13 +13,16 @@ export function Page({ children, wide = false, className = '' }) {
   );
 }
 
-export function PageHeader({ overline, title, description, actions, meta }) {
+export function PageHeader({ overline, title, description, actions, meta, titleExtra }) {
   return (
     <header className="mb-8 sm:mb-10">
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0 max-w-2xl">
           {overline && <p className="type-overline mb-2.5">{overline}</p>}
-          <h1 className="font-display text-display-md text-ink sm:text-[2.15rem]">{title}</h1>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="font-display text-display-md text-ink sm:text-[2.15rem]">{title}</h1>
+            {titleExtra}
+          </div>
           {description && (
             <div className="mt-2.5 max-w-xl text-sm leading-relaxed text-ink-muted">{description}</div>
           )}
@@ -38,25 +41,6 @@ export function Panel({ children, className = '', padded = false, hover = false 
       className={`surface-panel ${hover ? 'surface-panel-hover' : ''} ${padded ? 'p-5 sm:p-6' : ''} ${className}`}
     >
       {children}
-    </div>
-  );
-}
-
-export function Stat({ label, value, hint, icon, tint = 'bg-elevated text-ink-soft' }) {
-  return (
-    <div className="surface-panel surface-panel-hover p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-3">
-        <p className="type-overline">{label}</p>
-        {icon && (
-          <span className={`flex h-9 w-9 items-center justify-center rounded-control ${tint}`}>
-            <Icon name={icon} size={16} />
-          </span>
-        )}
-      </div>
-      <p className="font-display mt-4 text-[2rem] font-semibold tracking-tight text-ink tabular-nums leading-none">
-        {value}
-      </p>
-      {hint && <p className="mt-2 text-xs leading-relaxed text-ink-muted">{hint}</p>}
     </div>
   );
 }
@@ -106,13 +90,26 @@ export function Toolbar({ children, className = '' }) {
   );
 }
 
-export function SearchField({ value, onChange, placeholder = 'Search…', className = '' }) {
+export function SearchField({
+  value,
+  onChange,
+  placeholder = 'Search…',
+  className = '',
+  label,
+  'aria-label': ariaLabel,
+}) {
+  const inputId = useId();
+  const accessibleName = ariaLabel || label || placeholder || 'Search';
   return (
     <div className={`relative max-w-sm flex-1 ${className}`}>
-      <span className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-ink-faint">
+      <label htmlFor={inputId} className="sr-only">
+        {accessibleName}
+      </label>
+      <span className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-ink-faint" aria-hidden="true">
         <Icon name="search" size={15} />
       </span>
       <input
+        id={inputId}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
@@ -151,10 +148,6 @@ export function AccountBadges({ account }) {
       {account.onboardingComplete === false && <Badge color="rose">Onboarding incomplete</Badge>}
     </>
   );
-}
-
-export function Card({ children, className = '' }) {
-  return <div className={`surface-panel ${className}`}>{children}</div>;
 }
 
 export function BoolCell({ value }) {
@@ -853,7 +846,15 @@ export function AsyncState({
 }
 
 export function Toast({ message, onDismiss }) {
-  if (!message) return null;
+  const [hidden, setHidden] = useState(false);
+  const messageKey =
+    typeof message === 'string' ? message : message ? `${message.message}|${message.severity || ''}` : '';
+
+  useEffect(() => {
+    setHidden(false);
+  }, [messageKey]);
+
+  if (!message || hidden) return null;
   const payload = typeof message === 'string' ? { message, severity: 'success' } : message;
   const severity = payload.severity || 'success';
   const styles = {
@@ -865,6 +866,10 @@ export function Toast({ message, onDismiss }) {
     danger: { icon: 'alert', iconClass: 'text-danger-soft', role: 'alert', live: 'assertive' },
   };
   const style = styles[severity] || styles.info;
+  const dismiss = () => {
+    setHidden(true);
+    onDismiss?.();
+  };
   return (
     <div
       className="fixed bottom-6 left-1/2 z-[60] w-[min(92vw,28rem)] -translate-x-1/2 animate-fade-up"
@@ -875,16 +880,10 @@ export function Toast({ message, onDismiss }) {
       <div className="flex items-center gap-2.5 rounded-control border border-ink/10 bg-ink px-4 py-3 text-sm font-medium text-white shadow-float">
         <Icon name={style.icon} size={16} className={style.iconClass} />
         <span className="min-w-0 flex-1">{payload.message}</span>
-        {onDismiss && (
-          <button type="button" onClick={onDismiss} aria-label="Dismiss notification">
-            <Icon name="x" size={15} />
-          </button>
-        )}
+        <button type="button" onClick={dismiss} aria-label="Dismiss notification">
+          <Icon name="x" size={15} />
+        </button>
       </div>
     </div>
   );
-}
-
-export function SectionLabel({ children, className = '' }) {
-  return <div className={`type-overline ${className}`}>{children}</div>;
 }

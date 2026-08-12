@@ -3,6 +3,7 @@
 export const NAV = {
   rehrig: [
     { type: 'item', key: 'home', module: 'home', label: 'Home', icon: 'grid' },
+    { type: 'item', key: 'activity', module: 'activity', label: 'Activity', icon: 'activity' },
     {
       type: 'section',
       label: 'Service Providers',
@@ -27,13 +28,19 @@ export const NAV = {
         {
           key: 'productTypes',
           module: 'productTypes',
-          label: 'Product Master Catalog',
+          label: 'Master Product Catalog',
         },
         { key: 'apiIntegrations', module: 'apiIntegrations', label: 'API Integrations' },
         {
           key: 'notificationConfig',
           module: 'notificationConfig',
           label: 'Notification Config',
+        },
+        {
+          key: 'reportSubs',
+          module: 'reportSubscriptions',
+          label: 'Report Subscriptions',
+          icon: 'mail',
         },
         {
           key: 'setup',
@@ -45,33 +52,28 @@ export const NAV = {
     },
   ],
   sp: [
-    { type: 'item', key: 'home', module: 'home', label: 'Home', icon: 'grid' },
     {
-      type: 'item',
-      key: 'details',
-      module: 'account',
-      params: { tab: 'details' },
-      label: 'Details',
-      icon: 'building',
-    },
-    {
-      type: 'item',
-      key: 'mindmap',
-      module: 'account',
-      params: { tab: 'mindmap' },
-      label: 'Mindmap',
-      icon: 'network',
+      type: 'section',
+      label: 'Overview',
+      children: [{ key: 'home', module: 'home', label: 'Home', icon: 'grid' }],
     },
     {
       type: 'section',
-      label: 'Related',
+      label: 'Service Provider',
       children: [
         {
-          key: 'r-products',
+          key: 'details',
           module: 'account',
-          params: { tab: 'products' },
-          label: 'Service Provider Products',
-          icon: 'users',
+          params: { tab: 'details' },
+          label: 'Details',
+          icon: 'building',
+        },
+        {
+          key: 'mindmap',
+          module: 'account',
+          params: { tab: 'mindmap' },
+          label: 'Mind Map',
+          icon: 'network',
         },
         {
           key: 'r-contacts',
@@ -80,14 +82,6 @@ export const NAV = {
           label: 'Contacts',
           icon: 'user',
         },
-        { key: 'r-assets', module: 'assets', label: 'Assets', icon: 'box' },
-        {
-          key: 'r-mrp',
-          module: 'maintenanceRouteProfiles',
-          label: 'Maintenance Route Profiles',
-          icon: 'wrench',
-        },
-        { key: 'r-locations', module: 'locations', label: 'Locations', icon: 'mapPin' },
         {
           key: 'r-customers',
           module: 'account',
@@ -95,19 +89,13 @@ export const NAV = {
           label: 'Customers',
           icon: 'user',
         },
-        { key: 'r-dispatches', module: 'dispatches', label: 'Dispatches', icon: 'send' },
+        { key: 'r-locations', module: 'locations', label: 'Locations', icon: 'mapPin' },
         {
-          key: 'r-notes',
-          module: 'notesAttachments',
-          label: 'Notes & Attachments',
-          icon: 'paperclip',
-        },
-        { key: 'r-workOrders', module: 'workOrders', label: 'Work Orders', icon: 'clipboard' },
-        {
-          key: 'r-requestTypes',
-          module: 'requestTypeResolutions',
-          label: 'Request Type/Resolutions',
-          icon: 'layers',
+          key: 'r-routes',
+          module: 'account',
+          params: { tab: 'routes' },
+          label: 'Routes',
+          icon: 'route',
         },
         {
           key: 'r-segments',
@@ -115,26 +103,6 @@ export const NAV = {
           params: { tab: 'segments' },
           label: 'Service Provider Segments',
           icon: 'layers',
-        },
-        {
-          key: 'r-aggTips',
-          module: 'aggregatedTips',
-          label: 'Aggregated Truck and Tips',
-          icon: 'barChart',
-        },
-        { key: 'r-trucks', module: 'trucks', label: 'Trucks', icon: 'truck' },
-        {
-          key: 'r-indTips',
-          module: 'individualTips',
-          label: 'Individual Tip / Non-Tip',
-          icon: 'layers',
-        },
-        {
-          key: 'r-routes',
-          module: 'account',
-          params: { tab: 'routes' },
-          label: 'Routes',
-          icon: 'route',
         },
         {
           key: 'r-notif',
@@ -147,10 +115,63 @@ export const NAV = {
     },
     {
       type: 'section',
-      label: 'Tools',
+      label: 'Assets & Products',
       children: [
+        { key: 'r-assets', module: 'assets', label: 'Assets', icon: 'box' },
+        {
+          key: 'r-products',
+          module: 'account',
+          params: { tab: 'products' },
+          label: 'Service Provider Products',
+          icon: 'package',
+        },
+      ],
+    },
+    {
+      type: 'section',
+      label: 'Operations',
+      children: [
+        { key: 'r-workOrders', module: 'workOrders', label: 'Work Orders', icon: 'clipboard' },
+        { key: 'r-dispatches', module: 'dispatches', label: 'Dispatches', icon: 'send' },
+        { key: 'r-trucks', module: 'trucks', label: 'Trucks', icon: 'truck' },
+        {
+          key: 'r-mrp',
+          module: 'maintenanceRouteProfiles',
+          label: 'Maintenance Route Profiles',
+          icon: 'wrench',
+        },
+        {
+          key: 'r-notes',
+          module: 'notesAttachments',
+          label: 'Notes & Attachments',
+          icon: 'paperclip',
+        },
         { key: 'mapCenter', module: 'mapCenter', label: 'Map Center', icon: 'map' },
-        { key: 'bulkImport', module: 'bulkImport', label: 'Bulk Import', icon: 'download' },
+        {
+          key: 'bulkImport',
+          module: 'bulkImport',
+          label: 'Bulk Import (White Tool)',
+          icon: 'download',
+        },
+      ],
+    },
+    {
+      type: 'section',
+      label: 'Telematics',
+      children: [
+        {
+          key: 'r-indTips',
+          module: 'individualTips',
+          label: 'Individual Tip / Non-Tip',
+          icon: 'layers',
+        },
+        {
+          key: 'r-aggTips',
+          module: 'aggregatedTips',
+          label: 'Aggregated Truck and Tips',
+          icon: 'barChart',
+        },
+        { key: 'devices', module: 'devices', label: 'Devices', icon: 'package' },
       ],
     },
     {
@@ -171,6 +192,25 @@ export const NAV = {
           label: 'Dashboards',
           icon: 'barChart',
         },
+        { key: 'activity', module: 'activity', label: 'Activity', icon: 'activity' },
+        {
+          key: 'reportSubs',
+          module: 'reportSubscriptions',
+          label: 'Report Subscriptions',
+          icon: 'mail',
+        },
+      ],
+    },
+    {
+      type: 'section',
+      label: 'Configure',
+      children: [
+        {
+          key: 'r-requestTypes',
+          module: 'requestTypeResolutions',
+          label: 'Request Type/Resolutions',
+          icon: 'layers',
+        },
       ],
     },
   ],
@@ -188,7 +228,7 @@ export const NAV = {
       type: 'item',
       key: 'myNotifications',
       module: 'myNotifications',
-      label: 'My Notifications',
+      label: 'Notifications',
       icon: 'bell',
     },
     { type: 'item', key: 'myAccount', module: 'myAccount', label: 'My Account', icon: 'users' },
@@ -204,9 +244,10 @@ export const MODULE_LABELS = {
   serviceTypes: 'Service Types',
   locationTypes: 'Location Types',
   assetTypes: 'Asset Types',
-  productTypes: 'Product Master Catalog',
+  productTypes: 'Master Product Catalog',
   apiIntegrations: 'API Integrations',
   notificationConfig: 'Notification Config',
+  reportSubscriptions: 'Report Subscriptions',
   setup: 'Workspace',
   workOrders: 'Work Orders',
   dispatches: 'Dispatches',
@@ -219,11 +260,13 @@ export const MODULE_LABELS = {
   aggregatedTips: 'Aggregated Truck and Tips',
   individualTips: 'Individual Tip / Non-Tip',
   mapCenter: 'Map Center',
-  bulkImport: 'Bulk Import',
+  bulkImport: 'Bulk Import (White Tool)',
+  devices: 'Devices',
+  activity: 'Activity',
   analytics: 'Analytics',
   myLocations: 'My Locations',
   myWorkOrders: 'My Work Orders',
-  myNotifications: 'My Notifications',
+  myNotifications: 'Notifications',
   myAccount: 'My Account',
   onboarding: 'Guided Onboarding',
   contractOnboarding: 'Contract Onboarding',
@@ -238,6 +281,15 @@ export function filterNavTree(tree, canNav) {
       return { ...n, children };
     })
     .filter(Boolean);
+}
+
+/** Flat list of destinations in a persona tree, tagged with their group label. */
+export function flattenNavDestinations(tree) {
+  return tree.flatMap((node) =>
+    node.type === 'item'
+      ? [{ ...node, group: null }]
+      : (node.children || []).map((child) => ({ ...child, group: node.label }))
+  );
 }
 
 export function isNavItemActive(item, activeModule, activeParams = {}) {

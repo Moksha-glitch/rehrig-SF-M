@@ -1,4 +1,4 @@
-/** App Launcher catalog and default product/license configuration (V1.4). */
+/** App Launcher catalog, product/license configuration, and report subscription options (V1.4). */
 
 export const LAUNCHER_APPS = [
   {
@@ -10,13 +10,6 @@ export const LAUNCHER_APPS = [
     module: 'home',
   },
   {
-    key: 'sales',
-    label: 'Sales',
-    subtitle: 'Manage accounts, leads, opportunities, and more.',
-    color: '#1E5A8F',
-    module: null,
-  },
-  {
     key: 'yourAcct',
     label: 'Your Account',
     subtitle: 'Add products and licenses, and review subscription details.',
@@ -25,42 +18,30 @@ export const LAUNCHER_APPS = [
     module: 'setup',
     params: { section: 'account' },
   },
-  {
-    key: 'automation',
-    label: 'Automation',
-    subtitle: 'Automate business processes and repetitive tasks.',
-    color: '#0f7b55',
-    module: null,
-  },
-  {
-    key: 'approvals',
-    label: 'Approvals',
-    subtitle: 'Manage approvals and approval flows.',
-    color: '#0f7b55',
-    module: null,
-  },
-  {
-    key: 'shield',
-    label: 'Shield',
-    subtitle: 'Monitor apps and data. Discover, track, and encrypt sensitive information.',
-    color: '#1E5A8F',
-    module: null,
-  },
 ];
 
 export const LAUNCHER_ITEMS = [
   { label: 'Accounts', module: 'accounts' },
+  { label: 'Activity', module: 'activity' },
+  { label: 'Aggregated Truck and Tips', module: 'aggregatedTips' },
   { label: 'Assets', module: 'assets' },
   { label: 'Contacts', module: 'contacts' },
   { label: 'Dashboards', module: 'analytics', params: { view: 'dashboards' } },
+  { label: 'Devices', module: 'devices' },
   { label: 'Dispatches', module: 'dispatches' },
   { label: 'Home', module: 'home' },
+  { label: 'Individual Tip / Non-Tip', module: 'individualTips' },
   { label: 'Locations', module: 'locations' },
+  { label: 'Maintenance Route Profiles', module: 'maintenanceRouteProfiles' },
   { label: 'Map Center', module: 'mapCenter' },
+  { label: 'Master Product Catalog', module: 'productTypes' },
+  { label: 'Notes & Attachments', module: 'notesAttachments' },
+  { label: 'Report Subscriptions', module: 'reportSubscriptions' },
   { label: 'Reports', module: 'analytics', params: { view: 'reports' } },
+  { label: 'Request Type / Resolutions', module: 'requestTypeResolutions' },
   { label: 'Trucks', module: 'trucks' },
   { label: 'Work Orders', module: 'workOrders' },
-  { label: 'Bulk Import', module: 'bulkImport' },
+  { label: 'Bulk Import (White Tool)', module: 'bulkImport' },
   { label: 'Workspace', module: 'setup', params: { section: 'userMgmt' } },
 ];
 
@@ -79,7 +60,7 @@ export const SEED_APP_LICENSES = [
   {
     id: 'lic-sales',
     appKey: 'sales',
-    productName: 'Sales Cloud (demo)',
+    productName: 'Vision Sales',
     licenseType: 'Platform',
     seats: 10,
     assigned: 4,
@@ -102,6 +83,61 @@ export const SEED_APP_LICENSES = [
 
 export const LICENSE_STATUSES = ['Active', 'Trial', 'Expired', 'Suspended'];
 export const LICENSE_TYPES = ['Named User', 'Platform', 'Org', 'Community'];
+
+export const SUBSCRIPTION_FREQUENCIES = ['Daily', 'Weekdays', 'Weekly', 'Monthly'];
+export const SUBSCRIPTION_WEEKDAYS = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+export const SUBSCRIPTION_CHANNELS = ['Email', 'Email + Slack', 'Slack', 'In-app only'];
+export const SUBSCRIPTION_FORMATS = ['PDF', 'CSV', 'PDF + CSV', 'Email digest'];
+
+export const SEED_REPORT_SUBSCRIPTIONS = [
+  {
+    id: 'sub-001',
+    reportId: 'rpt-hot-aging',
+    reportName: 'Hot Tickets Aging',
+    frequency: 'Daily',
+    day: '',
+    time: '07:00',
+    recipients: 'yolanda@vision.io',
+    channel: 'Email',
+    format: 'PDF',
+    active: true,
+    notes: 'Morning triage list for the back office.',
+  },
+  {
+    id: 'sub-002',
+    reportId: 'rpt-sla-account',
+    reportName: 'SLA % by Account',
+    frequency: 'Weekly',
+    day: 'Monday',
+    time: '08:00',
+    recipients: 'helena@vision.io, ravi.medam@vision.io',
+    channel: 'Email + Slack',
+    format: 'PDF + CSV',
+    active: true,
+    notes: 'Leadership review pack.',
+  },
+  {
+    id: 'sub-003',
+    reportId: 'rpt-truck-util',
+    reportName: 'Truck Utilization',
+    frequency: 'Weekly',
+    day: 'Friday',
+    time: '17:00',
+    recipients: 'marcus@vision.io',
+    channel: 'Email',
+    format: 'CSV',
+    active: false,
+    notes: 'Paused until the fleet audit closes.',
+  },
+];
 
 export const DEFAULT_WORKSPACE_SETTINGS = {
   organizationName: 'Rehrig Pacific Company',

@@ -34,12 +34,73 @@ import {
 import { getErrorMessage } from '../lib/errors.js';
 import { PICKLISTS } from '../data/picklists.js';
 
+const WASTE_STREAMS = PICKLISTS.productServiceType;
+const WASTE_STREAM_CATEGORIES = PICKLISTS.productServiceCategory;
+const LOCATION_CATEGORIES = ['Residential', 'Commercial', 'Industrial', 'Facility', 'Other'];
+const ASSET_CATEGORIES = PICKLISTS.productFamily;
+
+const CONFIG_FIELDS = {
+  serviceTypes: [
+    { key: 'name', label: 'Service Name', required: true, list: true },
+    { key: 'code', label: 'Code', list: true },
+    { key: 'wasteStream', label: 'Waste Stream', type: 'select', options: WASTE_STREAMS, list: true },
+    { key: 'specialLicense', label: 'Special License' },
+    { key: 'serviceCode', label: 'Service Code' },
+    { key: 'wasteStreamCategory', label: 'Waste Stream Category', type: 'select', options: WASTE_STREAM_CATEGORIES, list: true },
+    { key: 'routePrefix', label: 'Route Prefix' },
+    { key: 'containerColour', label: 'Container Colour' },
+    {
+      key: 'requiresSpecialHandlingLicense',
+      label: 'Requires Special Handling License',
+      type: 'checkbox',
+      span2: true,
+    },
+    { key: 'availableForResidential', label: 'Available for Residential', type: 'checkbox' },
+    { key: 'availableForCommercial', label: 'Available for Commercial', type: 'checkbox' },
+    { key: 'sortOrder', label: 'Sort Order', type: 'number', list: true },
+    { key: 'isActive', label: 'Is Active', type: 'checkbox', list: true },
+    { key: 'description', label: 'Description', type: 'textarea', span2: true },
+  ],
+  locationTypes: [
+    { key: 'name', label: 'Type Name', required: true, list: true },
+    { key: 'category', label: 'Category', type: 'select', options: LOCATION_CATEGORIES, list: true },
+    { key: 'publicPortal', label: 'Public Portal', type: 'checkbox', list: true },
+    { key: 'needsSegment', label: 'Needs Segment', type: 'checkbox', list: true },
+    { key: 'sort', label: 'Sort', type: 'number', list: true },
+    { key: 'typeCode', label: 'Type Code', list: true },
+    { key: 'description', label: 'Description', type: 'textarea', span2: true },
+  ],
+  assetTypes: [
+    { key: 'name', label: 'Type Name', required: true, list: true },
+    { key: 'code', label: 'Type Code', list: true },
+    { key: 'category', label: 'Category', type: 'select', options: ASSET_CATEGORIES, list: true },
+    { key: 'sortOrder', label: 'Sort Order', type: 'number', list: true },
+    { key: 'isActive', label: 'Is Active', type: 'checkbox', list: true },
+    { key: 'description', label: 'Description', type: 'textarea', span2: true, list: true },
+  ],
+  productTypes: [
+    { key: 'name', label: 'Product Name', required: true, list: true },
+    { key: 'code', label: 'Product Code', list: true },
+    { key: 'family', label: 'Family', type: 'select', options: PICKLISTS.productFamily, list: true },
+    { key: 'serviceType', label: 'Service Type', type: 'select', options: PICKLISTS.productServiceType, list: true },
+    { key: 'category', label: 'Category', type: 'select', options: PICKLISTS.productServiceCategory, list: true },
+    { key: 'size', label: 'Size' },
+    { key: 'isActive', label: 'Is Active', type: 'checkbox', list: true },
+    { key: 'description', label: 'Description', type: 'textarea', span2: true },
+  ],
+};
+
+function listColumnsFor(configKey) {
+  const fields = (CONFIG_FIELDS[configKey] || []).filter((field) => field.list);
+  return [...fields.map((field) => field.label), ''];
+}
+
 const CONFIG_META = {
   serviceTypes: {
     title: 'Service Types',
     subtitle:
       'Customer classifications (Residential, Commercial, Industrial, Municipal). Managed centrally by Rehrig.',
-    columns: ['Name', 'Description', ''],
+    columns: listColumnsFor('serviceTypes'),
     newLabel: 'New Service Type',
     stateList: 'serviceTypes',
     kind: 'config',
@@ -48,7 +109,7 @@ const CONFIG_META = {
     title: 'Location Types',
     subtitle:
       'Categories of physical locations (homes, businesses, yards, and more). Managed centrally by Rehrig.',
-    columns: ['Name', 'Description', ''],
+    columns: listColumnsFor('locationTypes'),
     newLabel: 'New Location Type',
     stateList: 'locationTypes',
     kind: 'config',
@@ -57,16 +118,16 @@ const CONFIG_META = {
     title: 'Asset Types',
     subtitle:
       'Categories of physical assets (carts, containers, compactors). Referenced by Product Master and Assets.',
-    columns: ['Name', 'Description', ''],
+    columns: listColumnsFor('assetTypes'),
     newLabel: 'New Asset Type',
     stateList: 'assetTypes',
     kind: 'config',
   },
   productTypes: {
-    title: 'Product Master Catalog',
+    title: 'Master Product Catalog',
     subtitle:
       'Product family categories (Cart, Bin, Compactor, Roll-Off, Container, Truck, Accessory). Managed centrally by Rehrig.',
-    columns: ['Name', 'Description', ''],
+    columns: listColumnsFor('productTypes'),
     newLabel: 'New Product Type',
     stateList: 'productTypes',
     kind: 'config',
@@ -110,9 +171,54 @@ function emptyNotifForm(row) {
   };
 }
 
+function emptyConfigForm(configKey, row) {
+  const fields = CONFIG_FIELDS[configKey] || [];
+  const form = {
+    originalId: row?.id || '',
+    initialSnapshot: '',
+  };
+  fields.forEach((field) => {
+    if (field.type === 'checkbox') {
+      form[field.key] =
+        row?.[field.key] !== undefined
+          ? !!row[field.key]
+          : field.key === 'isActive' || field.key === 'availableForResidential' || field.key === 'availableForCommercial'
+            ? true
+            : false;
+    } else if (field.type === 'number') {
+      form[field.key] = row?.[field.key] ?? '';
+    } else if (field.type === 'select') {
+      form[field.key] = row?.[field.key] || field.options?.[0] || '';
+    } else {
+      form[field.key] = row?.[field.key] || '';
+    }
+  });
+  form.initialSnapshot = JSON.stringify(snapshotConfigForm(form, configKey));
+  return form;
+}
+
+function snapshotConfigForm(form, configKey) {
+  const fields = CONFIG_FIELDS[configKey] || [];
+  const snap = {};
+  fields.forEach((field) => {
+    snap[field.key] = form[field.key];
+  });
+  return snap;
+}
+
+function formatConfigCell(field, row) {
+  const value = row[field.key];
+  if (field.type === 'checkbox') {
+    if (field.key === 'isActive') return value === false ? 'Inactive' : 'Active';
+    return value ? 'Yes' : 'No';
+  }
+  if (value === undefined || value === null || value === '') return '—';
+  return String(value);
+}
+
 export function MasterConfig({ configKey }) {
   const meta = CONFIG_META[configKey];
-  const { toast } = useStore();
+  const { toast, canCreateAccounts, deleteApiIntegration, mode } = useStore();
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(null);
   const [apiEditing, setApiEditing] = useState(null);
@@ -131,10 +237,13 @@ export function MasterConfig({ configKey }) {
   const notifMutations = useNotificationRuleMutations();
   const toggleRule = useToggleNotificationRule();
 
+  const canEdit = canCreateAccounts;
   const activeQuery =
     meta.kind === 'config' ? configQuery : meta.kind === 'api' ? apiQuery : notifQuery;
   const rows = activeQuery.data || [];
   const filtered = rows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase()));
+  const configFields = CONFIG_FIELDS[configKey] || [];
+  const listFields = configFields.filter((field) => field.list);
 
   const openApiForm = (row) => {
     const form = emptyApiForm(row);
@@ -153,7 +262,7 @@ export function MasterConfig({ configKey }) {
   const onNew = () => {
     setSaveError('');
     if (meta.kind === 'config') {
-      setEditing({ id: '', name: '', description: '', initialName: '', initialDescription: '' });
+      setEditing(emptyConfigForm(configKey));
       return;
     }
     if (meta.kind === 'api') {
@@ -166,18 +275,26 @@ export function MasterConfig({ configKey }) {
   };
 
   const save = async (item) => {
-    if (!item.name.trim()) {
+    if (!String(item.name || '').trim()) {
       setSaveError('Name is required.');
       return;
     }
     setSaveError('');
     try {
       if (item.originalId) await remove.mutateAsync(item.originalId);
-      await create.mutateAsync({
+      const payload = {
         id: item.originalId || `${meta.stateList}-${Date.now()}`,
-        name: item.name.trim(),
-        description: item.description.trim(),
-      });
+        ...snapshotConfigForm(item, configKey),
+      };
+      if (payload.name) payload.name = String(payload.name).trim();
+      if (typeof payload.description === 'string') payload.description = payload.description.trim();
+      if (payload.sortOrder !== undefined && payload.sortOrder !== '') {
+        payload.sortOrder = Number(payload.sortOrder) || 0;
+      }
+      if (payload.sort !== undefined && payload.sort !== '') {
+        payload.sort = Number(payload.sort) || 0;
+      }
+      await create.mutateAsync(payload);
       toast(`${meta.title.replace(/s$/, '')} ${item.originalId ? 'updated' : 'created'}`);
       setEditing(null);
     } catch (error) {
@@ -258,12 +375,34 @@ export function MasterConfig({ configKey }) {
 
   const removeRow = async (row) => {
     try {
-      await remove.mutateAsync(row.id);
-      setDeleted(row);
+      if (meta.kind === 'api') {
+        await deleteApiIntegration(row.id);
+        if (mode === 'api') await apiQuery.refetch?.();
+      } else {
+        await remove.mutateAsync(row.id);
+      }
+      setDeleted({ ...row, _kind: meta.kind });
       setDeletePending(null);
       toast(`${row.name} deleted`);
     } catch (error) {
       toast(getErrorMessage(error, 'Could not delete configuration.'), 'danger');
+    }
+  };
+
+  const undoDelete = async () => {
+    if (!deleted) return;
+    const { _kind, ...item } = deleted;
+    try {
+      if (_kind === 'api') {
+        await apiMutations.create.mutateAsync(item);
+        if (mode === 'api') await apiQuery.refetch?.();
+      } else {
+        await create.mutateAsync(item);
+      }
+      setDeleted(null);
+      toast('Delete undone');
+    } catch (error) {
+      toast(getErrorMessage(error, 'Could not undo delete.'), 'danger');
     }
   };
 
@@ -272,16 +411,28 @@ export function MasterConfig({ configKey }) {
   const apiDirty = !!apiEditing && JSON.stringify(apiEditing) !== JSON.stringify(apiBaseline);
   const notifDirty =
     !!notifEditing && JSON.stringify(notifEditing) !== JSON.stringify(notifBaseline);
+  const configDirty =
+    !!editing &&
+    JSON.stringify(snapshotConfigForm(editing, configKey)) !== editing.initialSnapshot;
+  const deleteBusy = meta.kind === 'api' ? false : remove.isPending;
+
   return (
     <Page>
       <PageHeader
         overline="Configure"
         title={meta.title}
-        description={meta.subtitle}
+        description={
+          <span>
+            {meta.subtitle}
+            {!canEdit && <span className="text-ink-faint"> · View only</span>}
+          </span>
+        }
         actions={
-          <Button variant="primary" onClick={onNew}>
-            <Icon name="plus" size={16} /> {meta.newLabel}
-          </Button>
+          canEdit ? (
+            <Button variant="primary" onClick={onNew}>
+              <Icon name="plus" size={16} /> {meta.newLabel}
+            </Button>
+          ) : null
         }
       />
 
@@ -292,7 +443,12 @@ export function MasterConfig({ configKey }) {
       >
         <Panel>
           <Toolbar>
-            <SearchField value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" />
+            <SearchField
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search…"
+              label={`Search ${meta.title.toLowerCase()}`}
+            />
           </Toolbar>
           <Table columns={meta.columns}>
             {filtered.map((row) => (
@@ -303,12 +459,38 @@ export function MasterConfig({ configKey }) {
                       checked={row.enabled}
                       onChange={(enabled) => toggleRule.mutate({ id: row.id, enabled })}
                       label={`Toggle ${row.name}`}
+                      disabled={!canEdit}
                     />
                   </td>
                 )}
-                <td className="px-4 py-3 font-medium text-ink">{row.name}</td>
-                {meta.kind === 'config' && (
-                  <td className="px-4 py-3 text-ink-muted">{row.description}</td>
+                {meta.kind === 'config' &&
+                  listFields.map((field) => (
+                    <td
+                      key={field.key}
+                      className={`px-4 py-3 ${
+                        field.key === 'name' ? 'font-medium text-ink' : 'text-ink-muted'
+                      } ${field.key === 'code' || field.key === 'typeCode' || field.key === 'sortOrder' || field.key === 'sort' ? 'mono' : ''}`}
+                    >
+                      {field.key === 'isActive' ||
+                      field.key === 'publicPortal' ||
+                      field.key === 'needsSegment' ? (
+                        <Badge
+                          color={
+                            formatConfigCell(field, row) === 'Active' ||
+                            formatConfigCell(field, row) === 'Yes'
+                              ? 'green'
+                              : 'slate'
+                          }
+                        >
+                          {formatConfigCell(field, row)}
+                        </Badge>
+                      ) : (
+                        formatConfigCell(field, row)
+                      )}
+                    </td>
+                  ))}
+                {meta.kind !== 'config' && (
+                  <td className="px-4 py-3 font-medium text-ink">{row.name}</td>
                 )}
                 {meta.kind === 'api' && (
                   <>
@@ -329,54 +511,56 @@ export function MasterConfig({ configKey }) {
                     <td className="px-4 py-3 text-ink-muted">{row.priority}</td>
                   </>
                 )}
-                {meta.kind === 'config' && (
+                {(meta.kind === 'config' || meta.kind === 'api' || meta.kind === 'notif') && (
                   <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      className="link-brand mr-3 text-xs"
-                      onClick={() =>
-                        setEditing({
-                          originalId: row.id,
-                          name: row.name,
-                          description: row.description,
-                          initialName: row.name,
-                          initialDescription: row.description,
-                        })
-                      }
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="text-xs text-danger hover:underline"
-                      onClick={() => setDeletePending(row)}
-                    >
-                      Delete
-                    </button>
+                    {canEdit && meta.kind === 'config' && (
+                      <>
+                        <button
+                          type="button"
+                          className="link-brand mr-3 text-xs"
+                          onClick={() => setEditing(emptyConfigForm(configKey, row))}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="text-xs text-danger hover:underline"
+                          onClick={() => setDeletePending(row)}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                    {canEdit && meta.kind === 'api' && (
+                      <>
+                        <button
+                          type="button"
+                          className="link-brand mr-3 text-xs"
+                          onClick={() => openApiForm(row)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="text-xs text-danger hover:underline"
+                          onClick={() => setDeletePending(row)}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                    {canEdit && meta.kind === 'notif' && (
+                      <button
+                        type="button"
+                        className="link-brand text-xs"
+                        onClick={() => openNotifForm(row)}
+                      >
+                        Edit
+                      </button>
+                    )}
                   </td>
                 )}
-                {meta.kind === 'api' && (
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      className="link-brand text-xs"
-                      onClick={() => openApiForm(row)}
-                    >
-                      Edit
-                    </button>
-                  </td>
-                )}
-                {meta.kind === 'notif' && (
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      className="link-brand text-xs"
-                      onClick={() => openNotifForm(row)}
-                    >
-                      Edit
-                    </button>
-                  </td>
-                )}              </tr>
+              </tr>
             ))}
           </Table>
         </Panel>
@@ -385,14 +569,7 @@ export function MasterConfig({ configKey }) {
       {deleted && (
         <div className="mt-3 flex items-center gap-3 text-sm text-ink-muted">
           <Badge color="slate">Deleted {deleted.name}</Badge>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              create.mutate(deleted);
-              setDeleted(null);
-              toast('Delete undone');
-            }}
-          >
+          <Button variant="secondary" onClick={undoDelete}>
             Undo
           </Button>
         </div>
@@ -405,32 +582,68 @@ export function MasterConfig({ configKey }) {
             setSaveError('');
           }}
           onSubmit={() => save(editing)}
-          title={`${editing.originalId ? 'Edit' : 'New'} ${meta.title.replace(/s$/, '')}`}
+          title={`${editing.originalId ? 'Edit' : 'New'} ${
+            configKey === 'productTypes'
+              ? 'Product'
+              : meta.title.replace(/ Types$/, ' Type').replace(/s$/, '')
+          }`}
           description="Manage this shared master configuration value."
-          dirty={
-            editing.name !== editing.initialName ||
-            editing.description !== editing.initialDescription
-          }
+          dirty={configDirty}
           busy={create.isPending || remove.isPending}
           error={saveError}
+          wide
         >
           <FieldSection title="Configuration details">
-            <Field label="Name" required>
-              <TextInput
-                value={editing.name}
-                onChange={(e) => {
-                  setEditing((c) => ({ ...c, name: e.target.value }));
-                  setSaveError('');
-                }}
-              />
-            </Field>
-            <Field label="Description">
-              <TextArea
-                rows={3}
-                value={editing.description}
-                onChange={(e) => setEditing((c) => ({ ...c, description: e.target.value }))}
-              />
-            </Field>
+            {configFields.map((field) => {
+              if (field.type === 'checkbox') {
+                return (
+                  <div key={field.key} className={field.span2 ? 'sm:col-span-2' : ''}>
+                    <Checkbox
+                      label={field.label}
+                      checked={!!editing[field.key]}
+                      onChange={(e) =>
+                        setEditing((current) => ({ ...current, [field.key]: e.target.checked }))
+                      }
+                    />
+                  </div>
+                );
+              }
+              return (
+                <Field
+                  key={field.key}
+                  label={field.label}
+                  required={!!field.required}
+                  span2={!!field.span2}
+                >
+                  {field.type === 'textarea' ? (
+                    <TextArea
+                      rows={3}
+                      value={editing[field.key] || ''}
+                      onChange={(e) =>
+                        setEditing((current) => ({ ...current, [field.key]: e.target.value }))
+                      }
+                    />
+                  ) : field.type === 'select' ? (
+                    <Select
+                      options={field.options || []}
+                      value={editing[field.key] || ''}
+                      onChange={(e) =>
+                        setEditing((current) => ({ ...current, [field.key]: e.target.value }))
+                      }
+                    />
+                  ) : (
+                    <TextInput
+                      type={field.type === 'number' ? 'number' : 'text'}
+                      value={editing[field.key] ?? ''}
+                      onChange={(e) => {
+                        setEditing((current) => ({ ...current, [field.key]: e.target.value }));
+                        if (field.key === 'name') setSaveError('');
+                      }}
+                    />
+                  )}
+                </Field>
+              );
+            })}
           </FieldSection>
         </FormDrawer>
       )}
@@ -566,12 +779,12 @@ export function MasterConfig({ configKey }) {
 
       {deletePending && (
         <ConfirmDialog
-          title="Delete configuration?"
+          title={meta.kind === 'api' ? 'Delete API integration?' : 'Delete configuration?'}
           description={`Delete “${deletePending.name}”?`}
           confirmLabel="Delete"
           onConfirm={() => removeRow(deletePending)}
           onCancel={() => setDeletePending(null)}
-          busy={remove.isPending}
+          busy={deleteBusy}
         />
       )}
     </Page>

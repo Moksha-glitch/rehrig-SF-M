@@ -1,6 +1,7 @@
 import React from 'react';
 import Icon from '../components/Icon.jsx';
 import { Button, Page } from '../components/UI.jsx';
+import { MODULE_LABELS } from '../components/navConfig.js';
 import { useStore } from '../state/AppStore.jsx';
 
 export default function NoAccess() {
@@ -8,7 +9,9 @@ export default function NoAccess() {
   const role = state.currentUser?.role;
   const home = persona === 'customer' ? 'myLocations' : 'home';
   const requested = state.nav?.module || 'this page';
-  const moduleLabel = requested.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
+  const moduleLabel =
+    MODULE_LABELS[requested] ||
+    requested.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
   const scope = state.currentUser?.scopeLabel;
 
   return (
