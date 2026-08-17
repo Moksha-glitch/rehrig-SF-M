@@ -113,12 +113,12 @@ export default function Login() {
   };
 
   return (
-    <main className="box-border flex min-h-screen w-full items-center justify-center bg-white p-4 sm:p-8">
+    <main className="box-border flex min-h-screen w-full items-center justify-center overflow-y-auto bg-white p-4 sm:p-6">
       <a href={`#${formDomId}`} className="skip-link">
         Skip to sign in
       </a>
 
-      <div className="grid h-[min(50rem,calc(100vh-8rem))] w-full max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border border-[#c7e5f3] bg-white shadow-float lg:grid-cols-2">
+      <div className="grid w-full max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border border-[#c7e5f3] bg-white shadow-float lg:h-[min(50rem,calc(100vh-2rem))] lg:max-h-[calc(100vh-2rem)] lg:grid-cols-2">
         <section
           className="relative flex min-h-[16rem] min-w-0 flex-col overflow-hidden px-6 py-8 sm:px-10 lg:min-h-0 lg:px-12 lg:py-10"
           style={{
@@ -146,9 +146,10 @@ export default function Login() {
         </section>
 
         <section
-          className="flex min-w-0 items-center justify-center border-t border-[#d9e5ed] bg-white px-5 py-8 sm:px-10 lg:border-l lg:border-t-0 lg:px-12 lg:py-10"
+          className="min-h-0 min-w-0 overflow-y-auto border-t border-[#d9e5ed] bg-white scroll-thin lg:border-l lg:border-t-0"
           aria-labelledby="signin-heading"
         >
+        <div className="flex min-h-full items-center justify-center px-5 py-8 sm:px-10 lg:px-12 lg:py-10">
         <div className="w-full max-w-[25rem] animate-fade-up">
           <div className="mb-9">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#55a9d5]">
@@ -410,6 +411,7 @@ export default function Login() {
               </div>
             )}
           </div>
+        </div>
         </div>
       </section>
       </div>

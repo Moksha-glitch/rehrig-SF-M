@@ -11,7 +11,73 @@ function initials(name) {
   return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase();
 }
 
+function VaiMark({ size = 32, muted = false }) {
+  const id = React.useId().replace(/:/g, '');
+  const ink = muted ? '#64748B' : '#5DB7E7';
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      {!muted && (
+        <path
+          d="M11.2256 31.7998C20.1635 31.7998 29.559 24.3516 29.559 15.9382C29.559 7.52467 20.1635 0.710938 11.2256 0.710938C2.28764 0.710938 0.441406 7.52467 0.441406 15.9382C0.441406 24.3516 2.28764 31.7998 11.2256 31.7998Z"
+          fill={`url(#vai-wash-${id})`}
+          fillOpacity="0.2"
+        />
+      )}
+      <path
+        d="M19.42 10.2305V12.897M20.7437 11.5637H18.0964M10.1546 22.23C10.1546 22.9663 9.56198 23.5633 8.83096 23.5633C8.09994 23.5633 7.50732 22.9663 7.50732 22.23C7.50732 21.4936 8.09994 20.8967 8.83096 20.8967C9.56198 20.8967 10.1546 21.4936 10.1546 22.23Z"
+        stroke={ink}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M13.6763 24.8889L10.8825 19.259L5.29395 16.4444L10.8825 13.6299L13.6763 8L16.4701 13.6299L22.0587 16.4444L16.4701 19.259L13.6763 24.8889ZM8.39042 16.4444L11.9198 18.2305L13.6763 21.786L15.4492 18.2305L18.9787 16.4444L15.4492 14.6749L13.6763 11.1194L11.9198 14.6749L8.39042 16.4444Z"
+        fill={ink}
+      />
+      {!muted && (
+        <defs>
+          <linearGradient
+            id={`vai-wash-${id}`}
+            x1="15.0002"
+            y1="0.710937"
+            x2="15.0002"
+            y2="31.7998"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#BB00BB" />
+            <stop offset="1" stopColor="#2B81FF" />
+          </linearGradient>
+        </defs>
+      )}
+    </svg>
+  );
+}
+
+function VisionAiNavButton({ active, collapsed, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Vision AI"
+      aria-label="Vision AI"
+      aria-current={active ? 'page' : undefined}
+      className={
+        collapsed
+          ? `nav-vai-collapsed ${active ? 'nav-vai-active' : ''}`
+          : `nav-vai w-full ${active ? 'nav-vai-active' : ''}`
+      }
+    >
+      <span className={collapsed ? 'flex h-8 w-8 items-center justify-center' : 'nav-vai-mark'}>
+        <VaiMark muted={!active} />
+      </span>
+      {!collapsed && <span className="nav-vai-label">VAI</span>}
+    </button>
+  );
+}
+
 function NavButton({ item, active, onClick, collapsed }) {
+  if (item.module === 'assistant') {
+    return <VisionAiNavButton active={active} collapsed={collapsed} onClick={onClick} />;
+  }
   return (
     <button
       type="button"
@@ -91,7 +157,7 @@ function FolderFlyout({ anchorEl, section, isItemActive, onSelect }) {
             role="menuitem"
             onClick={() => onSelect(item)}
             className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13.5px] interactive ${
-              active ? 'bg-surface text-ink' : 'text-ink-muted hover:bg-surface hover:text-ink'
+              active ? 'nav-item-active-soft text-ink' : 'text-ink-muted hover:bg-surface hover:text-ink'
             }`}
           >
             {item.icon ? (
@@ -130,12 +196,14 @@ function FolderButton({ section, collapsed, open, active, onToggle, isItemActive
         className={
           collapsed
             ? `flex h-10 w-10 items-center justify-center rounded-xl ${
-                open || active
-                  ? 'bg-surface text-ink'
-                  : 'text-ink-muted hover:bg-surface hover:text-ink'
+                active
+                  ? 'nav-item-active text-ink'
+                  : open
+                    ? 'bg-surface/70 text-ink'
+                    : 'text-ink-muted hover:bg-surface hover:text-ink'
               }`
             : `nav-item flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13.5px] ${
-                open || active
+                active
                   ? 'nav-item-active text-ink'
                   : 'text-ink-muted hover:bg-surface hover:text-ink'
               }`
@@ -144,7 +212,7 @@ function FolderButton({ section, collapsed, open, active, onToggle, isItemActive
         <Icon
           name={section.icon || section.children?.[0]?.icon || 'grid'}
           size={collapsed ? 18 : 16}
-          className={`shrink-0 ${open || active ? 'text-ink' : 'text-ink-faint'}`}
+          className={`shrink-0 ${active || open ? 'text-ink' : 'text-ink-faint'}`}
         />
         {!collapsed && (
           <>
@@ -152,7 +220,7 @@ function FolderButton({ section, collapsed, open, active, onToggle, isItemActive
             <Icon
               name="chevronDown"
               size={14}
-              className={`shrink-0 ${open || active ? 'text-ink-muted' : 'text-ink-faint'}`}
+              className={`shrink-0 ${active ? 'text-ink-muted' : 'text-ink-faint'}`}
             />
           </>
         )}
@@ -176,7 +244,7 @@ function FolderButton({ section, collapsed, open, active, onToggle, isItemActive
                 role="menuitem"
                 onClick={() => onSelect(item)}
                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-left text-[13px] interactive ${
-                  itemActive ? 'bg-surface text-ink' : 'text-ink-muted hover:bg-surface hover:text-ink'
+                  itemActive ? 'nav-item-active-soft text-ink' : 'text-ink-muted hover:bg-surface hover:text-ink'
                 }`}
               >
                 {item.icon ? (

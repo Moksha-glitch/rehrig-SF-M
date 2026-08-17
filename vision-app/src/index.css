@@ -278,6 +278,58 @@ a {
     background: var(--color-surface);
     box-shadow: var(--shadow-raise);
   }
+  .nav-item-active-soft {
+    font-weight: 500;
+    color: var(--color-ink);
+    background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+  }
+
+  .nav-vai {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    height: 48px;
+    padding: 0 12px 0 0;
+    border-radius: 12px;
+    background: transparent;
+  }
+  .nav-vai-active {
+    padding: 0 12px 0 0;
+    border-radius: 4px;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.5) 50.48%, rgba(255, 255, 255, 0.7) 100%),
+      linear-gradient(180deg, rgba(187, 0, 187, 0.2) 0%, rgba(43, 129, 255, 0.2) 100%);
+  }
+  .nav-vai-mark {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 4px;
+  }
+  .nav-vai-label {
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 24px;
+    color: #64748b;
+  }
+  .nav-vai-collapsed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border-radius: 12px;
+    background: transparent;
+  }
+  .nav-vai-collapsed.nav-vai-active {
+    border-radius: 4px;
+  }
 
   .link-brand {
     @apply font-medium text-brand interactive;
