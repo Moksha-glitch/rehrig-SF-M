@@ -611,8 +611,7 @@ export default function Wizard({ onClose, draftId = null }) {
   };
 
   const requestClose = () => {
-    if (hasFormProgress(f, phase, step)) setCancelOpen(true);
-    else onClose();
+    setCancelOpen(true);
   };
 
   const discardAndClose = () => {
@@ -661,21 +660,31 @@ export default function Wizard({ onClose, draftId = null }) {
     >
       {/* Header */}
       <header className="flex shrink-0 flex-col items-start justify-between gap-3 border-b border-line bg-surface px-4 py-4 sm:flex-row sm:px-8 sm:py-5">
-        <div className="min-w-0">
-          <p className="type-overline">Onboarding</p>
-          <h1 id="wizard-title" className="font-display mt-1.5 text-title-md text-ink">
-            Onboard Service Provider
-          </h1>
-          <div className="mt-1 text-sm text-ink-muted">
-            {phase === 'choose' || phase === 'confirm' || phase === 'extracting'
-              ? phase === 'confirm'
-                ? 'Confirm the contract file before extraction'
-                : 'Upload a contract or fill in the details manually'
-              : 'Guided setup based on the VISION onboarding process'}
+        <div className="flex min-w-0 items-start gap-3">
+          <button
+            type="button"
+            onClick={requestClose}
+            className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-ink-soft interactive hover:bg-elevated hover:text-ink"
+            aria-label="Back"
+          >
+            <Icon name="arrowLeft" size={20} />
+          </button>
+          <div className="min-w-0">
+            <p className="type-overline">Onboarding</p>
+            <h1 id="wizard-title" className="font-display mt-1.5 text-title-md text-ink">
+              Onboard Service Provider
+            </h1>
+            <div className="mt-1 text-sm text-ink-muted">
+              {phase === 'choose' || phase === 'confirm' || phase === 'extracting'
+                ? phase === 'confirm'
+                  ? 'Confirm the contract file before extraction'
+                  : 'Upload a contract or fill in the details manually'
+                : 'Guided setup based on the VISION onboarding process'}
+            </div>
           </div>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {phase === 'steps' && (
+        {phase === 'steps' && (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -712,16 +721,8 @@ export default function Wizard({ onClose, draftId = null }) {
                 </span>
               )}
             </button>
-          )}
-          <button
-            type="button"
-            onClick={requestClose}
-            className="rounded-control p-1.5 text-ink-faint interactive hover:bg-elevated"
-            aria-label="Leave onboarding"
-          >
-            <Icon name="x" size={18} />
-          </button>
-        </div>
+          </div>
+        )}
       </header>
 
       {/* First screen: upload + fill manually together */}
@@ -737,14 +738,7 @@ export default function Wizard({ onClose, draftId = null }) {
             onRetry={() => handleContractFile(extractionFile.current)}
           />
           {phase === 'choose' && (
-            <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-line bg-elevated/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-              <button
-                type="button"
-                onClick={requestClose}
-                className="text-sm font-medium text-ink-muted interactive hover:text-ink"
-              >
-                Cancel
-              </button>
+            <div className="flex shrink-0 items-center justify-end border-t border-line bg-elevated/30 px-4 py-4 sm:px-8">
               <span className="text-xs text-ink-faint">Choose an option above to continue</span>
             </div>
           )}
@@ -977,14 +971,7 @@ export default function Wizard({ onClose, draftId = null }) {
           </div>
 
           {/* Sticky actions */}
-          <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-line bg-elevated/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <button
-              type="button"
-              onClick={requestClose}
-              className="text-sm font-medium text-ink-muted interactive hover:text-ink"
-            >
-              Cancel
-            </button>
+          <div className="flex shrink-0 items-center justify-end border-t border-line bg-elevated/30 px-4 py-4 sm:px-8">
             <div className="flex items-center gap-2.5">
               {step > 0 && (
                 <button type="button" onClick={back} className="btn-secondary">
@@ -1007,12 +994,23 @@ export default function Wizard({ onClose, draftId = null }) {
 
       {cancelOpen && (
         <Dialog
-          title="Discard entered data?"
-          description="All entered data will be lost unless you save a draft. Drafts appear below active providers in the directory."
+          title="Leave onboarding?"
+          description={
+            hasFormProgress(f, phase, step)
+              ? 'Entered data will be lost unless you save a draft. Drafts appear below active providers in the directory.'
+              : 'You will return to the previous screen. You can start onboarding again anytime.'
+          }
           onClose={() => setCancelOpen(false)}
         >
           <div className="px-6 py-4">
-            <p className="type-overline mb-3">Leave onboarding?</p>
+            <div className="mb-4 flex items-start gap-2 rounded-panel border border-warn/30 bg-warn-soft px-3 py-2.5">
+              <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-warn" />
+              <p className="text-sm text-ink-soft">
+                {hasFormProgress(f, phase, step)
+                  ? 'This will close the full-screen onboarding flow.'
+                  : 'No provider has been created yet.'}
+              </p>
+            </div>
             {draftError && (
               <p className="mb-3 text-sm text-danger" role="alert">
                 {draftError}
@@ -1023,11 +1021,13 @@ export default function Wizard({ onClose, draftId = null }) {
                 Keep editing
               </button>
               <button type="button" onClick={discardAndClose} className="btn-secondary">
-                Discard
+                {hasFormProgress(f, phase, step) ? 'Discard and leave' : 'Leave'}
               </button>
-              <button type="button" onClick={saveAsDraftAndClose} className="btn-primary">
-                Save as draft
-              </button>
+              {hasFormProgress(f, phase, step) && (
+                <button type="button" onClick={saveAsDraftAndClose} className="btn-primary">
+                  Save as draft
+                </button>
+              )}
             </div>
           </div>
         </Dialog>

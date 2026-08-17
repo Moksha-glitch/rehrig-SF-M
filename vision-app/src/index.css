@@ -335,10 +335,7 @@ a {
   aspect-ratio: 240 / 91;
   max-height: 91px;
   flex: none;
-  filter: drop-shadow(0px 16px 40px rgba(255, 255, 255, 0.14902));
-  backdrop-filter: blur(12px);
-  border-radius: 40px;
-  background: rgba(255, 255, 255, 0.28);
+  background: transparent;
 }
 
 /* Editorial login atmosphere */
@@ -367,24 +364,20 @@ a {
 .login-field:hover:not(:disabled) {
   border-bottom-color: var(--color-ink-muted);
 }
-.login-field:focus {
+.login-field:focus,
+.login-field:focus-visible {
   outline: none;
   border-bottom-color: var(--color-brand);
   box-shadow: 0 1px 0 0 var(--color-brand);
-}
-.login-field:focus-visible {
-  outline: 2px solid var(--color-brand);
-  outline-offset: 4px;
-  border-radius: 2px;
 }
 .login-field-error {
   border-bottom-color: var(--color-danger);
 }
 .login-field-error:focus,
 .login-field-error:focus-visible {
+  outline: none;
   border-bottom-color: var(--color-danger);
   box-shadow: 0 1px 0 0 var(--color-danger);
-  outline-color: var(--color-danger);
 }
 .login-field:disabled {
   opacity: 0.6;

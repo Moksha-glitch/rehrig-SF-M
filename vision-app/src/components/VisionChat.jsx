@@ -191,64 +191,65 @@ export default function VisionChat({ onOnboard, onClose }) {
       className="fixed inset-0 z-40 flex h-full min-h-0 w-full flex-col border-r border-line bg-surface lg:static lg:z-auto lg:w-[32rem] lg:shrink-0"
       aria-label="Vision AI"
     >
-      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-line px-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand text-[10px] font-bold text-white">
-              V
-            </span>
-            <div className="font-display text-sm font-semibold text-ink">Vision AI</div>
-          </div>
-          <div className="truncate pl-8 text-[10px] text-ink-faint">
-            Summary in chat · Detail in dashboard
-          </div>
+      <div className="flex h-12 shrink-0 items-center justify-between gap-2 px-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand text-[10px] font-bold text-white">
+            V
+          </span>
+          <div className="truncate font-display text-sm font-semibold text-ink">Vision AI</div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg p-1.5 text-ink-muted hover:bg-elevated hover:text-ink"
-          aria-label="Close Vision AI"
-        >
-          <Icon name="x" size={14} />
-        </button>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2 border-b border-line px-3 py-2">
-        <button
-          type="button"
-          onClick={newChat}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-line bg-elevated/60 px-2.5 py-1.5 text-xs font-medium text-ink interactive hover:bg-elevated"
-        >
-          <Icon name="plus" size={12} /> New chat
-        </button>
-        <div className="relative">
+        <div className="flex shrink-0 items-center">
           <button
             type="button"
-            onClick={() => setHistoryOpen((open) => !open)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink-muted interactive hover:bg-elevated hover:text-ink"
-            aria-expanded={historyOpen}
+            onClick={newChat}
+            className="rounded-lg p-1.5 text-ink-muted hover:bg-elevated hover:text-ink"
+            aria-label="New chat"
+            title="New chat"
           >
-            <Icon name="clock" size={12} /> History {history.length}
+            <Icon name="plus" size={16} />
           </button>
-          {historyOpen && (
-            <div className="absolute right-0 z-20 mt-1 w-64 rounded-panel border border-line bg-surface p-1.5 shadow-float">
-              {history.length ? (
-                history.map((thread) => (
-                  <button
-                    key={thread.id}
-                    type="button"
-                    onClick={() => openThread(thread)}
-                    className="block w-full rounded-lg px-2.5 py-2 text-left hover:bg-elevated"
-                  >
-                    <div className="truncate text-xs font-medium text-ink">{thread.title}</div>
-                    <div className="truncate text-[10px] text-ink-faint">{thread.page}</div>
-                  </button>
-                ))
-              ) : (
-                <div className="px-2.5 py-3 text-xs text-ink-muted">No earlier chats yet.</div>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen((open) => !open)}
+              className="relative rounded-lg p-1.5 text-ink-muted hover:bg-elevated hover:text-ink"
+              aria-label="Chat history"
+              aria-expanded={historyOpen}
+              title="History"
+            >
+              <Icon name="clock" size={16} />
+              {history.length > 0 && (
+                <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-brand" />
               )}
-            </div>
-          )}
+            </button>
+            {historyOpen && (
+              <div className="absolute right-0 z-20 mt-1 w-64 rounded-panel border border-line bg-surface p-1.5 shadow-float">
+                {history.length ? (
+                  history.map((thread) => (
+                    <button
+                      key={thread.id}
+                      type="button"
+                      onClick={() => openThread(thread)}
+                      className="block w-full rounded-lg px-2.5 py-2 text-left hover:bg-elevated"
+                    >
+                      <div className="truncate text-xs font-medium text-ink">{thread.title}</div>
+                      <div className="truncate text-[10px] text-ink-faint">{thread.page}</div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-2.5 py-3 text-xs text-ink-muted">No earlier chats yet.</div>
+                )}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-ink-muted hover:bg-elevated hover:text-ink"
+            aria-label="Close Vision AI"
+          >
+            <Icon name="x" size={16} />
+          </button>
         </div>
       </div>
 
@@ -346,15 +347,15 @@ export default function VisionChat({ onOnboard, onClose }) {
             event.preventDefault();
             send(draft);
           }}
-          className="flex items-end gap-1.5 rounded-2xl border border-line bg-elevated/50 px-2 py-2"
+          className="flex items-end gap-2 rounded-[1.75rem] border border-line bg-elevated px-3 py-2 shadow-raise"
         >
           <button
             type="button"
-            className="mb-0.5 rounded-lg p-1.5 text-ink-faint hover:bg-surface hover:text-ink"
+            className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-faint hover:bg-surface hover:text-ink"
             aria-label="Add context"
             title="Add context"
           >
-            <Icon name="plus" size={15} />
+            <Icon name="plus" size={16} />
           </button>
           <label className="min-w-0 flex-1">
             <span className="sr-only">Message Vision AI</span>
@@ -370,17 +371,14 @@ export default function VisionChat({ onOnboard, onClose }) {
               }}
               disabled={busy}
               rows={1}
-              placeholder="Ask Vision or search the workspace…"
-              className="max-h-24 w-full resize-none bg-transparent py-1.5 text-sm text-ink placeholder:text-ink-faint focus:outline-none"
+              placeholder="How can I help you today?"
+              className="max-h-28 w-full resize-none bg-transparent py-1.5 text-sm leading-6 text-ink placeholder:text-ink-faint focus:outline-none focus-visible:shadow-none"
             />
           </label>
-          <span className="mb-0.5 hidden rounded-md border border-line px-1.5 py-1 text-[10px] font-medium text-ink-faint xl:inline">
-            Claude 3.7
-          </span>
           <button
             type="submit"
             disabled={busy || !draft.trim()}
-            className="mb-0.5 rounded-lg bg-brand p-1.5 text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-faint"
             aria-label="Send message"
           >
             <Icon name="send" size={14} />
