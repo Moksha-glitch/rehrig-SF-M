@@ -172,6 +172,7 @@ export default function VisionChat({ onOnboard, onClose }) {
     const nextMessages = [...messages, { id: messageId.current, role: 'user', text: prompt }];
     setMessages(nextMessages);
     setDraft('');
+    if (inputRef.current) inputRef.current.style.height = 'auto';
     setBusy(true);
     window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => {
@@ -240,11 +241,12 @@ export default function VisionChat({ onOnboard, onClose }) {
           <button
             type="button"
             onClick={newChat}
-            className="rounded-lg p-1.5 text-ink-muted hover:bg-elevated hover:text-ink"
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-ink-muted hover:bg-elevated hover:text-ink"
             aria-label="New chat"
             title="New chat"
           >
-            <Icon name="plus" size={16} />
+            <Icon name="plus" size={14} />
+            New chat
           </button>
           <div className="relative">
             <button
@@ -446,7 +448,7 @@ export default function VisionChat({ onOnboard, onClose }) {
         )}
       </div>
 
-      <div className="relative shrink-0 border-t border-line p-3">
+      <div className="relative shrink-0 bg-surface px-3 pb-3 pt-1">
         {showSearch && (
           <div className="absolute inset-x-3 bottom-full z-20 mb-2 max-h-64 overflow-y-auto rounded-panel border border-line bg-surface p-1.5 shadow-float scroll-thin">
             <div className="px-3 pb-1 pt-1.5 type-overline">Jump to</div>
@@ -477,22 +479,27 @@ export default function VisionChat({ onOnboard, onClose }) {
             event.preventDefault();
             send(draft);
           }}
-          className="flex items-end gap-2 rounded-[1.75rem] border border-line bg-elevated px-3 py-2 shadow-raise"
+          className="flex items-end gap-2 rounded-[28px] bg-[#f4f4f4] px-2.5 py-2 shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)]"
         >
           <button
             type="button"
-            className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-faint hover:bg-surface hover:text-ink"
-            aria-label="Add context"
-            title="Add context"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white text-ink hover:bg-elevated"
+            aria-label="Add"
+            title="Add"
           >
             <Icon name="plus" size={16} />
           </button>
-          <label className="min-w-0 flex-1">
+          <label className="flex min-h-8 min-w-0 flex-1 items-center">
             <span className="sr-only">Message Vision AI</span>
             <textarea
               ref={inputRef}
               value={draft}
-              onChange={(event) => setDraft(event.target.value)}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                const field = event.target;
+                field.style.height = 'auto';
+                field.style.height = `${Math.min(field.scrollHeight, 128)}px`;
+              }}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' && !event.shiftKey) {
                   event.preventDefault();
@@ -502,16 +509,16 @@ export default function VisionChat({ onOnboard, onClose }) {
               disabled={busy}
               rows={1}
               placeholder="How can I help you today?"
-              className="max-h-28 w-full resize-none bg-transparent py-1.5 text-sm leading-6 text-ink placeholder:text-ink-faint focus:outline-none focus-visible:shadow-none"
+              className="max-h-32 min-h-8 w-full resize-none bg-transparent py-0 text-[15px] leading-8 text-ink placeholder:text-ink-faint focus:outline-none focus-visible:shadow-none"
             />
           </label>
           <button
             type="submit"
             disabled={busy || !draft.trim()}
-            className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-faint"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-white disabled:cursor-default disabled:bg-black/10 disabled:text-ink-faint"
             aria-label="Send message"
           >
-            <Icon name="send" size={14} />
+            <Icon name="arrowUp" size={16} />
           </button>
         </form>
       </div>
