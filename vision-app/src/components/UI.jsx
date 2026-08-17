@@ -272,9 +272,11 @@ export function TextArea({ className = '', rows = 2, ...rest }) {
 }
 
 export function Select({ options = [], className = '', placeholder, ...rest }) {
+  const emptyLabel = placeholder || 'Select…';
+  const showEmpty = Boolean(placeholder) || rest.value === '' || rest.value == null;
   return (
     <select className={`${inputBase} ${className}`} {...rest}>
-      {placeholder && <option value="">{placeholder}</option>}
+      {showEmpty && <option value="">{emptyLabel}</option>}
       {options.map((o) => {
         if (o && typeof o === 'object') {
           const value = o.value ?? o.k ?? '';
