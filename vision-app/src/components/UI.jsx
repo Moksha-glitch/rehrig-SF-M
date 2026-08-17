@@ -6,7 +6,7 @@ import Icon from './Icon.jsx';
 export function Page({ children, wide = false, className = '' }) {
   return (
     <div
-      className={`mx-auto animate-fade-up px-6 py-8 sm:px-8 sm:py-10 ${wide ? 'max-w-7xl' : 'max-w-6xl'} ${className}`}
+      className={`mx-auto min-w-0 animate-fade-up px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 ${wide ? 'max-w-7xl' : 'max-w-6xl'} ${className}`}
     >
       {children}
     </div>
@@ -19,8 +19,8 @@ export function PageHeader({ overline, title, description, actions, meta, titleE
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0 max-w-2xl">
           {overline && <p className="type-overline mb-2.5">{overline}</p>}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="font-display text-display-md text-ink sm:text-[2.15rem]">{title}</h1>
+          <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+            <h1 className="min-w-0 break-words font-display text-display-md text-ink sm:text-[2.15rem]">{title}</h1>
             {titleExtra}
           </div>
           {description && (
@@ -28,7 +28,7 @@ export function PageHeader({ overline, title, description, actions, meta, titleE
           )}
           {meta && <div className="mt-2 text-sm text-ink-muted">{meta}</div>}
         </div>
-        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+        {actions && <div className="flex max-w-full flex-wrap items-center gap-2 sm:shrink-0">{actions}</div>}
       </div>
       <div className="hairline-rule mt-7 animate-rule-draw" />
     </header>
@@ -101,7 +101,7 @@ export function SearchField({
   const inputId = useId();
   const accessibleName = ariaLabel || label || placeholder || 'Search';
   return (
-    <div className={`relative max-w-sm flex-1 ${className}`}>
+    <div className={`relative min-w-0 max-w-sm flex-1 ${className}`}>
       <label htmlFor={inputId} className="sr-only">
         {accessibleName}
       </label>
@@ -320,25 +320,40 @@ export function Switch({
   disabled,
   label = 'Toggle setting',
   className = '',
+  state,
   ...rest
 }) {
+  const resolved = state || (checked ? 'on' : 'off');
+  const nextOn = resolved !== 'on';
+  const title =
+    resolved === 'on'
+      ? 'All selected — click to clear'
+      : resolved === 'partial'
+        ? 'Custom selection — click to select all'
+        : 'Nothing selected — click to select all';
+
   return (
     <button
       type="button"
-      onClick={() => !disabled && onChange(!checked)}
+      onClick={() => !disabled && onChange(nextOn)}
       disabled={disabled}
       role="switch"
-      aria-checked={!!checked}
+      aria-checked={resolved === 'partial' ? 'mixed' : resolved === 'on'}
       aria-label={label}
+      title={title}
       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-snappy ease-out ${
-        checked ? 'bg-brand' : 'bg-line-strong'
+        resolved === 'on' ? 'bg-brand' : resolved === 'partial' ? 'bg-accent' : 'bg-line-strong'
       } ${disabled ? 'opacity-50' : ''} ${className}`}
       {...rest}
     >
       <span
         aria-hidden="true"
         className={`inline-block h-4 w-4 transform rounded-full bg-surface transition-transform duration-snappy ease-out ${
-          checked ? 'translate-x-4' : 'translate-x-0.5'
+          resolved === 'on'
+            ? 'translate-x-4'
+            : resolved === 'partial'
+              ? 'translate-x-[10px]'
+              : 'translate-x-0.5'
         }`}
       />
     </button>
@@ -392,8 +407,8 @@ export function Tabs({ items, value, onChange, label = 'Sections', className = '
 
 export function Table({ columns, children, className = '', caption, label }) {
   return (
-    <div className={`overflow-x-auto ${className}`}>
-      <table className="w-full text-left text-sm" aria-label={caption ? undefined : label}>
+    <div className={`overflow-x-auto scroll-thin ${className}`}>
+      <table className="w-full min-w-max text-left text-sm" aria-label={caption ? undefined : label}>
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead>
           <tr className="border-b border-line bg-elevated/30">
@@ -578,6 +593,7 @@ export function Drawer({
   onClose,
   open = true,
   wide = false,
+  extraWide = false,
   title,
   description,
   footer,
@@ -646,8 +662,12 @@ export function Drawer({
         aria-describedby={description ? descriptionId : undefined}
         aria-label={title ? undefined : 'Drawer'}
         tabIndex={-1}
-        className={`relative z-10 flex h-full w-full flex-col overflow-hidden border-l border-line bg-surface shadow-float animate-fade-up ${
-          wide ? 'sm:max-w-2xl lg:max-w-3xl' : 'sm:max-w-md md:max-w-lg'
+        className={`relative z-10 flex h-full w-full max-w-[100vw] flex-col overflow-hidden border-l border-line bg-surface shadow-float animate-fade-up ${
+          extraWide
+            ? 'sm:max-w-3xl lg:max-w-6xl'
+            : wide
+              ? 'sm:max-w-2xl lg:max-w-3xl'
+              : 'sm:max-w-md md:max-w-lg'
         } ${className}`}
       >
         {(title || description) && (
@@ -677,7 +697,11 @@ export function Drawer({
 /** Sticky action bar for drawer footers (also usable inside FormDrawer custom footers). */
 export function DrawerActions({ children, className = '' }) {
   return (
-    <div className={`flex shrink-0 flex-wrap items-center justify-end gap-2.5 px-6 py-4 ${className}`}>
+    <div
+      className={`flex shrink-0 flex-wrap items-center gap-2.5 px-6 py-4 ${
+        className.includes('justify-') ? className : `justify-end ${className}`
+      }`}
+    >
       {children}
     </div>
   );
@@ -709,6 +733,7 @@ export function FormDrawer({
   title,
   description,
   wide = false,
+  extraWide = false,
   children,
   footer,
   dirty = false,
@@ -757,6 +782,7 @@ export function FormDrawer({
         title={title}
         description={description}
         wide={wide}
+        extraWide={extraWide}
         className={className}
       >
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">

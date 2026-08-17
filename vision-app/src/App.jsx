@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from './state/AppStore.jsx';
 import { useAuth } from './state/AuthContext.jsx';
 import { useAccounts } from './hooks/useAccounts.js';
 import { useCompleteOnboarding } from './hooks/useOnboarding.js';
 import TopBar from './components/TopBar.jsx';
 import SideNav from './components/SideNav.jsx';
-import GlobalAssistant from './components/GlobalAssistant.jsx';
+import VisionChat from './components/VisionChat.jsx';
 import { Toast } from './components/UI.jsx';
 import Login from './screens/Login.jsx';
 import RegistryHome from './screens/RegistryHome.jsx';
@@ -17,6 +17,7 @@ import AccountDetail from './screens/AccountDetail.jsx';
 import Wizard from './screens/wizard/Wizard.jsx';
 import { MasterConfig } from './screens/Configs.jsx';
 import Setup from './screens/Setup.jsx';
+import ProfileManagement from './screens/ProfileManagement.jsx';
 import { GenericList } from './screens/RecordScreens.jsx';
 import ContactsDirectory from './screens/ContactsDirectory.jsx';
 import MapCenter from './screens/MapCenter.jsx';
@@ -27,6 +28,16 @@ import Devices from './screens/Devices.jsx';
 import ReportSubscriptions from './screens/ReportSubscriptions.jsx';
 import { getErrorMessage } from './lib/errors.js';
 import { onboardingNavParams, parseOnboardingReturn } from './utils/appNavigation.js';
+
+const SIDEBAR_COLLAPSED_KEY = 'vision.ui.sidebarCollapsed';
+
+function readSidebarOpen() {
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) !== '1';
+  } catch {
+    return true;
+  }
+}
 
 function Router({ onOnboard }) {
   const { state, persona, canAccessModule, navigate, toast } = useStore();
@@ -44,8 +55,10 @@ function Router({ onOnboard }) {
     locationTypes: 'locationTypes',
     assetTypes: 'assetTypes',
     productTypes: 'productTypes',
+    device: 'device',
+    truck: 'truck',
     apiIntegrations: 'apiIntegrations',
-    notificationConfig: persona === 'rehrig' ? 'notificationConfig' : 'configure',
+    notificationConfig: 'notificationConfig',
     onboarding: 'onboarding',
     contractOnboarding: 'contractOnboarding',
     setup: 'setup',
@@ -100,11 +113,16 @@ function Router({ onOnboard }) {
       return <MasterConfig configKey="assetTypes" />;
     case 'productTypes':
       return <MasterConfig configKey="productTypes" />;
+    case 'device':
+      return <MasterConfig configKey="device" />;
+    case 'truck':
+      return <MasterConfig configKey="truck" />;
     case 'apiIntegrations':
       return <MasterConfig configKey="apiIntegrations" />;
     case 'notificationConfig':
       return <MasterConfig configKey="notificationConfig" />;
     case 'setup':
+      if (params.section === 'profileMgmt') return <ProfileManagement />;
       return <Setup />;
     case 'workOrders':
     case 'dispatches':
@@ -165,8 +183,28 @@ function Router({ onOnboard }) {
 }
 
 export default function App() {
-  const { state, navigate } = useStore();
+  const { state, navigate, assistantOpen, closeAssistant } = useStore();
   const { bootstrapping } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarOpen ? '0' : '1');
+    } catch {
+      /* ignore quota / private-mode failures */
+    }
+  }, [sidebarOpen]);
+
+  const prevModuleRef = useRef(state.nav.module);
+
+  useEffect(() => {
+    const previous = prevModuleRef.current;
+    prevModuleRef.current = state.nav.module;
+
+    if (previous !== state.nav.module) closeAssistant();
+  }, [state.nav.module, closeAssistant]);
+
+  const toggleSidebar = () => setSidebarOpen((open) => !open);
 
   const openOnboard = (draftId = null) => {
     navigate(
@@ -192,13 +230,16 @@ export default function App() {
   const isOnboarding = state.nav.module === 'onboarding';
 
   return (
-    <div className="app-shell flex h-full w-full flex-col font-sans text-ink">
+    <div className="app-shell flex h-full min-h-0 min-w-0 w-full overflow-x-hidden font-sans text-ink">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
-      <TopBar />
-      <div className="flex min-h-0 flex-1">
-        {!isOnboarding && <SideNav />}
+      {!isOnboarding && <SideNav open={sidebarOpen} onToggle={toggleSidebar} />}
+      {!isOnboarding && assistantOpen && (
+        <VisionChat onOnboard={openOnboard} onClose={closeAssistant} />
+      )}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <TopBar />
         <main
           id="main-content"
           tabIndex={-1}
@@ -211,7 +252,6 @@ export default function App() {
           <Router onOnboard={openOnboard} />
         </main>
       </div>
-      <GlobalAssistant onOnboard={openOnboard} />
       <Toast message={state.toast} />
     </div>
   );

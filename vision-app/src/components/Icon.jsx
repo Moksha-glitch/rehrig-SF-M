@@ -217,6 +217,18 @@ const PATHS = {
       <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
     </>
   ),
+  smartphone: (
+    <>
+      <rect x="7" y="2" width="10" height="20" rx="2" />
+      <path d="M11 18h2" />
+    </>
+  ),
+  mic: (
+    <>
+      <rect x="9" y="2" width="6" height="11" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 18, className = '', strokeWidth = 2, ...rest }) {

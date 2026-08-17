@@ -373,7 +373,7 @@ export default function MapCenter() {
                   (pin.layer === 'assets' &&
                     focusAssetId &&
                     (pin.id === focusAssetId || pin.asset?.id === focusAssetId))) && (
-                  <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium text-ink-muted">
+                  <span className="absolute -top-5 left-1/2 hidden max-w-[5.5rem] -translate-x-1/2 truncate text-center text-[10px] font-medium text-ink-muted sm:block">
                     {pin.label}
                   </span>
                 )}
@@ -382,10 +382,10 @@ export default function MapCenter() {
           </div>
 
           {selectedDetail && (
-            <div className="mt-3 flex items-center justify-between rounded-panel border border-line p-3 text-sm">
-              <div>
-                <strong>{selectedDetail.title}</strong>
-                <span className="ml-2 text-ink-muted">{selectedDetail.subtitle}</span>
+            <div className="mt-3 flex flex-col gap-2 rounded-panel border border-line p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <strong className="block truncate">{selectedDetail.title}</strong>
+                <span className="mt-0.5 block truncate text-ink-muted sm:mt-0 sm:ml-2 sm:inline">{selectedDetail.subtitle}</span>
               </div>
               {selectedDetail.action ? (
                 <button type="button" className="link-brand text-xs" onClick={selectedDetail.action.onClick}>

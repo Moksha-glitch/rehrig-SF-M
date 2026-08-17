@@ -22,7 +22,6 @@ export const LAUNCHER_APPS = [
 
 export const LAUNCHER_ITEMS = [
   { label: 'Accounts', module: 'accounts' },
-  { label: 'Activity', module: 'activity' },
   { label: 'Aggregated Truck and Tips', module: 'aggregatedTips' },
   { label: 'Assets', module: 'assets' },
   { label: 'Contacts', module: 'contacts' },
@@ -34,7 +33,11 @@ export const LAUNCHER_ITEMS = [
   { label: 'Locations', module: 'locations' },
   { label: 'Maintenance Route Profiles', module: 'maintenanceRouteProfiles' },
   { label: 'Map Center', module: 'mapCenter' },
-  { label: 'Master Product Catalog', module: 'productTypes' },
+  { label: 'Product', module: 'productTypes' },
+  { label: 'Device', module: 'device' },
+  { label: 'Truck', module: 'truck' },
+  { label: 'Profile Management', module: 'setup', params: { section: 'profileMgmt' } },
+  { label: 'User Management', module: 'setup', params: { section: 'userMgmt' } },
   { label: 'Notes & Attachments', module: 'notesAttachments' },
   { label: 'Report Subscriptions', module: 'reportSubscriptions' },
   { label: 'Reports', module: 'analytics', params: { view: 'reports' } },

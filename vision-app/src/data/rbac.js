@@ -30,6 +30,7 @@ export const ROLE_NAV_KEYS = {
 
   // Ops Manager / Back-Office — ops data, no Segments / MRP / Request-Type config / Bulk Import
   'sp:Ops Manager': [
+    'assistant',
     'home',
     'details',
     'mindmap',
@@ -38,6 +39,8 @@ export const ROLE_NAV_KEYS = {
     'r-assets',
     'r-locations',
     'r-customers',
+    'r-manage',
+    'r-masterProducts',
     'r-dispatches',
     'r-notes',
     'r-workOrders',
@@ -50,15 +53,15 @@ export const ROLE_NAV_KEYS = {
     'devices',
     'reports',
     'dashboards',
-    'activity',
     'reportSubs',
   ],
 
   // Field Tech — assigned Work Orders + Assets only (+ Map, Details)
-  'sp:Field Tech': ['home', 'details', 'r-assets', 'r-workOrders', 'mapCenter'],
+  'sp:Field Tech': ['assistant', 'home', 'details', 'r-assets', 'r-workOrders', 'mapCenter'],
 
   // Dispatcher — Dispatches / WOs / Routes / Assets / Trucks; no Contacts or Segments
   'sp:Dispatcher': [
+    'assistant',
     'home',
     'details',
     'mindmap',
@@ -74,16 +77,15 @@ export const ROLE_NAV_KEYS = {
     'mapCenter',
     'devices',
     'reports',
-    'activity',
   ],
 
   // Analyst — dashboards / reports (read-only); no mutate tools
   'sp:Analyst': [
+    'assistant',
     'home',
     'details',
     'reports',
     'dashboards',
-    'activity',
     'reportSubs',
     'r-aggTips',
     'r-indTips',
@@ -107,10 +109,12 @@ export const ROLE_MODULES = {
     'locationTypes',
     'assetTypes',
     'productTypes',
+    'device',
+    'truck',
     'apiIntegrations',
     'notificationConfig',
     'reportSubscriptions',
-    'activity',
+    'analytics',
     'onboarding',
     'contractOnboarding',
     'setup',
@@ -132,9 +136,11 @@ export const ROLE_MODULES = {
     'mapCenter',
     'bulkImport',
     'analytics',
-    'activity',
     'devices',
     'reportSubscriptions',
+    'productTypes',
+    'notificationConfig',
+    'setup',
   ],
 
   'sp:Ops Manager': [
@@ -150,9 +156,9 @@ export const ROLE_MODULES = {
     'individualTips',
     'mapCenter',
     'analytics',
-    'activity',
     'devices',
     'reportSubscriptions',
+    'productTypes',
   ],
 
   'sp:Field Tech': ['home', 'account', 'assets', 'workOrders', 'mapCenter'],
@@ -170,7 +176,6 @@ export const ROLE_MODULES = {
     'individualTips',
     'mapCenter',
     'analytics',
-    'activity',
     'devices',
   ],
 
@@ -180,7 +185,6 @@ export const ROLE_MODULES = {
     'aggregatedTips',
     'individualTips',
     'analytics',
-    'activity',
     'reportSubscriptions',
   ],
 

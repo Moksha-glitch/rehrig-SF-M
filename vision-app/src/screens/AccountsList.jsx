@@ -116,13 +116,13 @@ export default function AccountsList({ onOnboard }) {
           {providerRows.map((a, i) => (
             <tr key={a.id} className="interactive hover:bg-elevated/70">
               <td className="mono px-4 py-3 text-ink-faint tabular-nums">{i + 1}</td>
-              <td className="px-4 py-3">
+              <td className="max-w-[14rem] px-4 py-3">
                 <button
                   type="button"
                   onClick={() => navigate('accountDetail', { accountId: a.id, tab: 'details' })}
-                  className="link-brand flex items-center gap-2 text-left"
+                  className="link-brand flex min-w-0 items-center gap-2 text-left"
                 >
-                  {a.name}
+                  <span className="truncate">{a.name}</span>
                   {isFollowingAccount?.(a.id) && (
                     <span title="Following" aria-label="Following">
                       <Icon name="bookmark" size={12} className="text-brand" aria-hidden="true" />

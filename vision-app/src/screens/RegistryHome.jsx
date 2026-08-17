@@ -6,7 +6,6 @@ import { useAccounts } from '../hooks/useAccounts.js';
 import { useContacts, useRecords } from '../hooks/useRecords.js';
 import { useDrafts } from '../hooks/useOnboarding.js';
 import { getErrorMessage } from '../lib/errors.js';
-import HomeAssistant from '../components/HomeAssistant.jsx';
 
 export default function RegistryHome({ onOnboard }) {
   const { navigate } = useStore();
@@ -46,7 +45,7 @@ export default function RegistryHome({ onOnboard }) {
   return (
     <Page>
       <PageHeader
-        overline="Platform"
+        overline="Home"
         title="Service Provider Registry"
         description={`${accounts.length} service providers · ${active} active · Registry data through ${latestDate ? new Date(`${latestDate}T12:00:00`).toLocaleDateString() : 'unknown'}`}
         actions={
@@ -89,10 +88,6 @@ export default function RegistryHome({ onOnboard }) {
             { label: 'Locations', value: locations, hint: 'Platform footprint' },
           ]}
         />
-        <div className="mt-4">
-          <HomeAssistant onOnboard={onOnboard} />
-        </div>
-
         <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {

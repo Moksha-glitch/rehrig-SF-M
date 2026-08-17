@@ -330,6 +330,16 @@ export const CONFIG_ASSET_TYPES = [
   { id: 'at-11', name: 'Bin', description: 'Front-load / rear-load bin' },
 ];
 export const CONFIG_PRODUCT_TYPES = CONFIG_ASSET_TYPES.map((t, i) => ({ id: 'pt-' + (i + 1), name: t.name, description: t.description }));
+export const CONFIG_DEVICES = [
+  { id: 'dev-1', name: 'RFID Arm Reader', code: 'RFID-ARM', type: 'RFID Reader', manufacturer: 'Rehrig', isActive: true, description: 'Side-arm RFID reader for residential carts.' },
+  { id: 'dev-2', name: 'All-in-one Telematics', code: 'AIO-TEL', type: 'All-in-one', manufacturer: 'Samsara', isActive: true, description: 'Combined GPS, camera and tip sensor unit.' },
+  { id: 'dev-3', name: 'Yard Handheld', code: 'HH-YARD', type: 'Other', manufacturer: 'Zebra', isActive: true, description: 'Handheld scanner used in maintenance yards.' },
+];
+export const CONFIG_TRUCKS = [
+  { id: 'trkcfg-1', name: 'Residential Side Loader', code: 'RSL', type: 'Side Loader', isActive: true, description: 'Automated side-load truck for cart collection.' },
+  { id: 'trkcfg-2', name: 'Commercial Front Loader', code: 'CFL', type: 'Front Loader', isActive: true, description: 'Front-load truck for commercial bins.' },
+  { id: 'trkcfg-3', name: 'Roll-Off Hauler', code: 'ROH', type: 'Roll-Off', isActive: true, description: 'Roll-off truck for industrial containers.' },
+];
 
 // ---- Related records for account detail tabs ----
 export const CONTACTS = [

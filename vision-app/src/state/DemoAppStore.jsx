@@ -206,11 +206,11 @@ function reducer(state, action) {
         ),
       };
     case 'DELETE_CONFIG': {
-      const list = state.config[action.list].filter((x) => x.id !== action.id);
+      const list = (state.config[action.list] || []).filter((x) => x.id !== action.id);
       return { ...state, config: { ...state.config, [action.list]: list } };
     }
     case 'ADD_CONFIG': {
-      const list = [action.item, ...state.config[action.list]];
+      const list = [action.item, ...(state.config[action.list] || [])];
       return { ...state, config: { ...state.config, [action.list]: list } };
     }
     case 'UPSERT_REPORT_SPEC': {

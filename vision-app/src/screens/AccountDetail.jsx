@@ -247,10 +247,10 @@ export default function AccountDetail({ accountId, tab }) {
             >
               <Icon name="bookmark" size={15} /> {followed ? 'Following' : 'Follow'}
             </Button>
-            <Button variant="secondary" onClick={() => setTab('contacts')}>
+            <Button variant="secondary" className="hidden sm:inline-flex" onClick={() => setTab('contacts')}>
               <Icon name="users" size={15} /> Contacts
             </Button>
-            <Button variant="secondary" onClick={() => setTab('routes')}>
+            <Button variant="secondary" className="hidden md:inline-flex" onClick={() => setTab('routes')}>
               View routes <Icon name="chevronRight" size={14} />
             </Button>
           </>
@@ -658,12 +658,12 @@ function ContactsTab({ accountId, contacts, canEdit, onChanged }) {
       >
         {contacts.map((c) => (
           <tr key={c.id} className="interactive hover:bg-elevated/70">
-            <td className="px-4 py-3 font-medium text-ink">{c.name}</td>
-            <td className="px-4 py-3 text-ink-muted">{c.title || '—'}</td>
-            <td className="px-4 py-3 text-ink-muted">{c.roleTitle || c.role || '—'}</td>
-            <td className="px-4 py-3 text-ink-muted">{c.email || '—'}</td>
-            <td className="px-4 py-3 text-ink-muted">{c.phone || c.mobile || '—'}</td>
-            <td className="px-4 py-3 text-ink-muted">{c.segment || '—'}</td>
+            <td className="max-w-[10rem] truncate px-4 py-3 font-medium text-ink">{c.name}</td>
+            <td className="max-w-[8rem] truncate px-4 py-3 text-ink-muted">{c.title || '—'}</td>
+            <td className="max-w-[8rem] truncate px-4 py-3 text-ink-muted">{c.roleTitle || c.role || '—'}</td>
+            <td className="max-w-[12rem] truncate px-4 py-3 text-ink-muted">{c.email || '—'}</td>
+            <td className="max-w-[8rem] truncate px-4 py-3 text-ink-muted">{c.phone || c.mobile || '—'}</td>
+            <td className="max-w-[8rem] truncate px-4 py-3 text-ink-muted">{c.segment || '—'}</td>
             <td className="px-4 py-3">
               <Badge color={recordStatusColor(recordStatus(c))}>{recordStatus(c)}</Badge>
             </td>

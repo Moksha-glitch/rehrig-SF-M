@@ -8,9 +8,11 @@ import {
   Checkbox,
   Toggle,
   Dialog,
+  Switch,
 } from '../../components/UI.jsx';
 import { PICKLISTS, HARDWARE_TYPES, SERVICE_TYPE_CARDS, DAY_LABELS } from '../../data/picklists.js';
 import { MASTER_CATALOG, WIZARD_PRODUCTS } from '../../data/seed.js';
+import { buildScreenModules, moduleAccessState } from '../../data/profileAccess.js';
 import { useStore } from '../../state/AppStore.jsx';
 import { useCompleteOnboarding, useDrafts, useSaveDraft } from '../../hooks/useOnboarding.js';
 import { getErrorMessage } from '../../lib/errors.js';
@@ -24,6 +26,7 @@ import {
 } from './WizardAssist.jsx';
 import {
   STEPS,
+  LAST_STEP,
   isStepComplete,
   getStepStatuses,
   nextRequiredIncompleteStep,
@@ -175,9 +178,13 @@ export default function Wizard({ onClose, draftId = null }) {
 
   const [f, setF] = useState(() => {
     if (existingDraft?.form) {
-      return existingDraft.form.sameAsBilling
+      const form = existingDraft.form.sameAsBilling
         ? { ...existingDraft.form, shipping: { ...existingDraft.form.billing } }
         : existingDraft.form;
+      return {
+        ...form,
+        screenAccess: form.screenAccess?.length ? form.screenAccess : buildScreenModules('all'),
+      };
     }
     return {
       accountName: '',
@@ -220,6 +227,7 @@ export default function Wizard({ onClose, draftId = null }) {
       products: {},
       routes: [emptyRoute()],
       contacts: [emptyContact('Service Provider Admin')],
+      screenAccess: buildScreenModules('all'),
     };
   });
 
@@ -298,7 +306,7 @@ export default function Wizard({ onClose, draftId = null }) {
   };
   const next = () => {
     setShowErrors(true);
-    if (step < 7 && canNext) {
+    if (step < LAST_STEP && canNext) {
       skipAutoNav.current = true;
       const n = step + 1;
       setStep(n);
@@ -327,7 +335,7 @@ export default function Wizard({ onClose, draftId = null }) {
     }
     const wasComplete = stepCompleteSnap.current.complete;
     stepCompleteSnap.current = { step, complete };
-    if (!wasComplete && complete && STEPS[step]?.required && step < 7) {
+    if (!wasComplete && complete && STEPS[step]?.required && step < LAST_STEP) {
       const n = nextRequiredIncompleteStep(validationErrors, step);
       if (n != null && n !== step) {
         setStep(n);
@@ -587,6 +595,7 @@ export default function Wizard({ onClose, draftId = null }) {
             enableMoveBurntCarts: f.enableMoveBurntCarts,
             inactive: f.inactive,
             notif: { ...f.notif },
+            screenAccess: f.screenAccess,
             _wizardProducts: selectedProducts.map(([code, v]) => ({
               code,
               rename: v.rename || '',
@@ -651,7 +660,7 @@ export default function Wizard({ onClose, draftId = null }) {
       className="flex h-full min-h-0 flex-1 flex-col bg-surface animate-fade-up"
     >
       {/* Header */}
-      <header className="flex shrink-0 items-start justify-between gap-4 border-b border-line bg-surface px-6 py-5 sm:px-8">
+      <header className="flex shrink-0 flex-col items-start justify-between gap-3 border-b border-line bg-surface px-4 py-4 sm:flex-row sm:px-8 sm:py-5">
         <div className="min-w-0">
           <p className="type-overline">Onboarding</p>
           <h1 id="wizard-title" className="font-display mt-1.5 text-title-md text-ink">
@@ -665,7 +674,7 @@ export default function Wizard({ onClose, draftId = null }) {
               : 'Guided setup based on the VISION onboarding process'}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {phase === 'steps' && (
             <button
               type="button"
@@ -728,7 +737,7 @@ export default function Wizard({ onClose, draftId = null }) {
             onRetry={() => handleContractFile(extractionFile.current)}
           />
           {phase === 'choose' && (
-            <div className="flex shrink-0 items-center justify-between border-t border-line bg-elevated/30 px-6 py-4 sm:px-8">
+            <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-line bg-elevated/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
               <button
                 type="button"
                 onClick={requestClose}
@@ -839,7 +848,7 @@ export default function Wizard({ onClose, draftId = null }) {
                 </select>
               </label>
               <div className="type-overline flex items-center gap-2">
-                Step {step + 1} of 8
+                Step {step + 1} of {STEPS.length}
                 {STEPS[step]?.required ? (
                   <span className={`rounded-control px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                     stepComplete ? 'bg-success-soft text-success' : 'bg-warn-soft text-warn'
@@ -854,7 +863,7 @@ export default function Wizard({ onClose, draftId = null }) {
               </div>
               <h2 className="font-display mt-2 text-title-lg text-ink">{STEPS[step].title}</h2>
 
-              {missingFields.length > 0 && step < 7 && (
+              {missingFields.length > 0 && step < LAST_STEP && (
                 <div className="mt-3 flex items-start gap-2 rounded-panel border border-line bg-warn-soft px-3 py-2.5">
                   <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-warn" />
                   <div>
@@ -867,7 +876,7 @@ export default function Wizard({ onClose, draftId = null }) {
                   </div>
                 </div>
               )}
-              {stepComplete && step < 7 && (
+              {stepComplete && step < LAST_STEP && (
                 <div className="mt-3 flex items-start gap-2 rounded-panel border border-success/25 bg-success-soft px-3 py-2.5">
                   <Icon name="checkCircle" size={16} className="mt-0.5 shrink-0 text-success" />
                   <div className="text-sm font-medium text-ink-soft">
@@ -905,6 +914,12 @@ export default function Wizard({ onClose, draftId = null }) {
                 />
               )}
               {step === 7 && (
+                <StepScreenAccess
+                  modules={f.screenAccess || buildScreenModules('all')}
+                  onChange={(screenAccess) => set({ screenAccess })}
+                />
+              )}
+              {step === LAST_STEP && (
                 <Step8
                   f={f}
                   errors={validationErrors}
@@ -921,7 +936,7 @@ export default function Wizard({ onClose, draftId = null }) {
                         reviewIssues.map((x) => x.message.replace(/\.$/, ''))
                       );
                     } else {
-                      pushMessage('assistant', completeNoteForStep(7, true));
+                      pushMessage('assistant', completeNoteForStep(LAST_STEP, true));
                     }
                   }}
                 />
@@ -962,7 +977,7 @@ export default function Wizard({ onClose, draftId = null }) {
           </div>
 
           {/* Sticky actions */}
-          <div className="flex shrink-0 items-center justify-between border-t border-line bg-elevated/30 px-6 py-4 sm:px-8">
+          <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-line bg-elevated/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
             <button
               type="button"
               onClick={requestClose}
@@ -976,7 +991,7 @@ export default function Wizard({ onClose, draftId = null }) {
                   <Icon name="chevronLeft" size={15} /> Back
                 </button>
               )}
-              {step < 7 ? (
+              {step < LAST_STEP ? (
                 <button type="button" onClick={next} disabled={!canNext} className="btn-primary">
                   Next <Icon name="chevronRight" size={15} />
                 </button>
@@ -1229,7 +1244,7 @@ function Step2({ f, set, setNotif, toggleServiceType, errors = {} }) {
             <Field label="Time Zone">
               <Select options={PICKLISTS.timeZone} value={f.notif.timeZone} onChange={(e) => setNotif({ timeZone: e.target.value })} />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Start Time">
                 <TextInput type="time" value={f.notif.startTime} onChange={(e) => setNotif({ startTime: e.target.value })} />
               </Field>
@@ -1581,6 +1596,125 @@ function ReviewCard({ label, children }) {
   );
 }
 
+function applyScreenOnOff(screen, on) {
+  return {
+    ...screen,
+    view: on,
+    edit: on,
+    fields: screen.fields
+      ? screen.fields.map((field) => ({ ...field, view: on, edit: on }))
+      : screen.fields,
+  };
+}
+
+function StepScreenAccess({ modules, onChange }) {
+  const toggleExpand = (moduleName) => {
+    onChange(
+      modules.map((group) =>
+        group.module === moduleName ? { ...group, expanded: !group.expanded } : group
+      )
+    );
+  };
+
+  const setModule = (moduleName, on) => {
+    onChange(
+      modules.map((group) =>
+        group.module === moduleName
+          ? { ...group, screens: group.screens.map((screen) => applyScreenOnOff(screen, on)) }
+          : group
+      )
+    );
+  };
+
+  const setScreen = (moduleName, screenId, on) => {
+    onChange(
+      modules.map((group) =>
+        group.module === moduleName
+          ? {
+              ...group,
+              screens: group.screens.map((screen) =>
+                screen.id === screenId ? applyScreenOnOff(screen, on) : screen
+              ),
+            }
+          : group
+      )
+    );
+  };
+
+  return (
+    <>
+      <p className="mt-1 text-sm text-ink-muted">
+        Choose which screens this Service Provider account can see. Everything starts enabled — turn
+        off anything outside this contract.
+      </p>
+      <div className="mt-4 flex items-start gap-2 rounded-panel border border-brand/25 bg-brand-soft px-3 py-2.5">
+        <Icon name="help" size={16} className="mt-0.5 shrink-0 text-brand" />
+        <p className="text-sm leading-relaxed text-ink-soft">
+          Everything is enabled by default. Based on the signed contract or the Service Provider&apos;s
+          request, turn off anything they should not see. Click a module to expand its screens, or use
+          the toggle on the module row to flip everything inside it at once.
+        </p>
+      </div>
+      <div className="mt-4 divide-y divide-line overflow-hidden rounded-panel border border-line bg-surface">
+        {modules.map((group) => {
+          const enabled = group.screens.filter((screen) => screen.view).length;
+          const total = group.screens.length;
+          const access = moduleAccessState(group);
+          return (
+            <div key={group.module}>
+              <div className="flex items-center gap-3 px-3 py-3 sm:px-4">
+                <button
+                  type="button"
+                  onClick={() => toggleExpand(group.module)}
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left interactive"
+                  aria-expanded={!!group.expanded}
+                >
+                  <Icon
+                    name={group.expanded ? 'chevronDown' : 'chevronRight'}
+                    size={14}
+                    className="shrink-0 text-ink-faint"
+                  />
+                  <span className="min-w-0 truncate text-sm font-medium text-ink">{group.module}</span>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      access === 'on'
+                        ? 'bg-success-soft text-success'
+                        : access === 'partial'
+                          ? 'bg-warn-soft text-warn'
+                          : 'bg-elevated text-ink-faint'
+                    }`}
+                  >
+                    {enabled}/{total}
+                  </span>
+                </button>
+                <Switch
+                  state={access}
+                  onChange={(on) => setModule(group.module, on)}
+                  label={`${group.module} screen access`}
+                />
+              </div>
+              {group.expanded && (
+                <div className="space-y-0.5 border-t border-line bg-elevated/40 px-3 py-2 sm:px-4">
+                  {group.screens.map((screen) => (
+                    <div key={screen.id} className="flex items-center justify-between gap-3 py-1.5 pl-6">
+                      <span className="min-w-0 truncate text-sm text-ink-muted">{screen.name}</span>
+                      <Switch
+                        checked={!!screen.view}
+                        onChange={(on) => setScreen(group.module, screen.id, on)}
+                        label={`${screen.name} access`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 function Step8({ f, errors = {}, issues = [], onJump, onOpenAssistant }) {
   const dash = <span className="text-ink-faint">—</span>;
   const products = Object.values(f.products).filter((p) => p.selected).length;
@@ -1666,6 +1800,17 @@ function Step8({ f, errors = {}, issues = [], onJump, onOpenAssistant }) {
         <ReviewCard label="Products selected">{products} products</ReviewCard>
         <ReviewCard label="Routes">
           {routes.length ? routes.map((r) => `${r.routeNumber} (${r.collectionType})`).join(' · ') : 'Add later'}
+        </ReviewCard>
+        <ReviewCard label="Screen access">
+          {(() => {
+            const groups = f.screenAccess || [];
+            const enabled = groups.reduce(
+              (sum, group) => sum + group.screens.filter((screen) => screen.view).length,
+              0
+            );
+            const total = groups.reduce((sum, group) => sum + group.screens.length, 0);
+            return total ? `${enabled} of ${total} screens enabled` : 'All screens enabled';
+          })()}
         </ReviewCard>
         <ReviewCard label="Contacts">
           {contacts.length

@@ -88,6 +88,33 @@ const CONFIG_FIELDS = {
     { key: 'isActive', label: 'Is Active', type: 'checkbox', list: true },
     { key: 'description', label: 'Description', type: 'textarea', span2: true },
   ],
+  device: [
+    { key: 'name', label: 'Device Name', required: true, list: true },
+    { key: 'code', label: 'Device Code', list: true },
+    {
+      key: 'type',
+      label: 'Type',
+      type: 'select',
+      options: ['RFID Reader', 'All-in-one', 'Telematics', 'Arm-lift', 'Other'],
+      list: true,
+    },
+    { key: 'manufacturer', label: 'Manufacturer', list: true },
+    { key: 'isActive', label: 'Is Active', type: 'checkbox', list: true },
+    { key: 'description', label: 'Description', type: 'textarea', span2: true },
+  ],
+  truck: [
+    { key: 'name', label: 'Truck Name', required: true, list: true },
+    { key: 'code', label: 'Truck Code', list: true },
+    {
+      key: 'type',
+      label: 'Type',
+      type: 'select',
+      options: ['Side Loader', 'Front Loader', 'Rear Loader', 'Roll-Off', 'Pickup'],
+      list: true,
+    },
+    { key: 'isActive', label: 'Is Active', type: 'checkbox', list: true },
+    { key: 'description', label: 'Description', type: 'textarea', span2: true },
+  ],
 };
 
 function listColumnsFor(configKey) {
@@ -124,12 +151,28 @@ const CONFIG_META = {
     kind: 'config',
   },
   productTypes: {
-    title: 'Master Product Catalog',
+    title: 'Product',
     subtitle:
-      'Product family categories (Cart, Bin, Compactor, Roll-Off, Container, Truck, Accessory). Managed centrally by Rehrig.',
+      'Master product catalog used by service providers. Managed centrally by Rehrig.',
     columns: listColumnsFor('productTypes'),
-    newLabel: 'New Product Type',
+    newLabel: 'New Product',
     stateList: 'productTypes',
+    kind: 'config',
+  },
+  device: {
+    title: 'Device',
+    subtitle: 'Device types that can be assigned to trucks and assets. Managed centrally by Rehrig.',
+    columns: listColumnsFor('device'),
+    newLabel: 'New Device',
+    stateList: 'device',
+    kind: 'config',
+  },
+  truck: {
+    title: 'Truck',
+    subtitle: 'Truck types used across service providers. Managed centrally by Rehrig.',
+    columns: listColumnsFor('truck'),
+    newLabel: 'New Truck',
+    stateList: 'truck',
     kind: 'config',
   },
   apiIntegrations: {

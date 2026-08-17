@@ -15,6 +15,7 @@ import {
   TextInput,
   Select,
   Checkbox,
+  Switch,
 } from '../components/UI.jsx';
 import { useStore } from '../state/AppStore.jsx';
 import { useUsers } from '../hooks/useAccounts.js';
@@ -24,6 +25,7 @@ import {
   useWorkspaceSettings,
 } from '../hooks/useConfig.js';
 import { getErrorMessage } from '../lib/errors.js';
+import { SEED_PROFILES } from '../data/profileAccess.js';
 import { RECORD_SCHEMAS } from '../data/recordSchemas.js';
 import {
   ROLE_PSG,
@@ -37,7 +39,7 @@ const SECTIONS = [
     label: 'User Management',
     icon: 'users',
     title: 'User Management',
-    subtitle: 'Organization info, users, and permission profiles.',
+    subtitle: 'Everyone who can sign in to Vision. Create a new user and assign them a profile.',
   },
   {
     key: 'account',
@@ -133,7 +135,6 @@ export default function Setup() {
   const usersQuery = useUsers();
   const settingsQuery = useWorkspaceSettings();
   const { update: updateSettings } = useWorkspaceMutations();
-  const users = usersQuery.data || [];
   const settings = settingsQuery.data || {};
   const canEditWorkspace = persona === 'rehrig';
   const canEditPreferences = !!state.currentUser;
@@ -142,10 +143,16 @@ export default function Setup() {
   const navTab = state.nav.params?.tab || 'general';
 
   const [section, setSection] = useState(
-    SECTIONS.some((s) => s.key === navSection) ? navSection : 'userMgmt'
+    navSection === 'profileMgmt' || !SECTIONS.some((s) => s.key === navSection)
+      ? 'userMgmt'
+      : navSection
   );
   const [tab, setTab] = useState(
-    USER_MGMT_TABS.some((t) => t.key === navTab) ? navTab : 'general'
+    navSection === 'profileMgmt'
+      ? 'profiles'
+      : USER_MGMT_TABS.some((t) => t.key === navTab)
+        ? navTab
+        : 'users'
   );
   const [explorerKind, setExplorerKind] = useState('workOrders');
   const [explorerField, setExplorerField] = useState('');
@@ -155,9 +162,17 @@ export default function Setup() {
   const [prefDraft, setPrefDraft] = useState(null);
   const [prefBaseline, setPrefBaseline] = useState(null);
   const [saveError, setSaveError] = useState('');
+  const [extraUsers, setExtraUsers] = useState([]);
+  const [userDraft, setUserDraft] = useState(null);
+  const users = [...extraUsers, ...(usersQuery.data || [])];
 
   useEffect(() => {
     const next = state.nav.params?.section || 'userMgmt';
+    if (next === 'profileMgmt') {
+      setSection('userMgmt');
+      setTab('profiles');
+      return;
+    }
     if (SECTIONS.some((s) => s.key === next)) setSection(next);
     const nextTab = state.nav.params?.tab;
     if (nextTab && USER_MGMT_TABS.some((t) => t.key === nextTab)) setTab(nextTab);
@@ -365,7 +380,27 @@ export default function Setup() {
               )}
 
               {tab === 'users' && (
-                <SetupBlock title="Every user across all three personas">
+                <SetupBlock
+                  title="Every user across all three personas"
+                  action={
+                    canEditWorkspace && (
+                      <Button
+                        variant="primary"
+                        onClick={() =>
+                          setUserDraft({
+                            firstName: '',
+                            lastName: '',
+                            email: '',
+                            profileRole: SEED_PROFILES[0].role,
+                            status: true,
+                          })
+                        }
+                      >
+                        <Icon name="plus" size={14} /> New User
+                      </Button>
+                    )
+                  }
+                >
                   <Table columns={['Name', 'Alias', 'Persona', 'Role', 'Scope', 'Active']}>
                     {users.map((u) => (
                       <tr key={u.id} className="interactive hover:bg-elevated/70">
@@ -655,6 +690,98 @@ export default function Setup() {
         </FormDrawer>
       )}
 
+      {userDraft && (
+        <FormDrawer
+          onClose={() => setUserDraft(null)}
+          onSubmit={() => {
+            if (!userDraft.firstName.trim() || !userDraft.lastName.trim() || !userDraft.email.trim()) {
+              setSaveError('First name, last name, and email are required.');
+              return;
+            }
+            const name = `${userDraft.firstName.trim()} ${userDraft.lastName.trim()}`;
+            setExtraUsers((prev) => [
+              {
+                id: `u-local-${Date.now().toString(36)}`,
+                alias: userDraft.email.split('@')[0],
+                name,
+                firstName: userDraft.firstName.trim(),
+                email: userDraft.email.trim(),
+                persona: userDraft.email.toLowerCase().includes('rehrig') ? 'rehrig' : 'sp',
+                role: userDraft.profileRole,
+                scopeLabel: 'Assigned by profile',
+                active: userDraft.status,
+                accountIds: [],
+              },
+              ...prev,
+            ]);
+            toast('User created');
+            setUserDraft(null);
+            setSaveError('');
+          }}
+          title="New User"
+          description="Create a user and assign a profile from Profile Management."
+          dirty={
+            !!(
+              userDraft.firstName ||
+              userDraft.lastName ||
+              userDraft.email
+            )
+          }
+          error={saveError}
+          submitLabel="Save User"
+        >
+          <FieldSection title="User details">
+          <Field label="First name" required>
+            <TextInput
+              value={userDraft.firstName}
+              onChange={(e) => {
+                setUserDraft((d) => ({ ...d, firstName: e.target.value }));
+                setSaveError('');
+              }}
+            />
+          </Field>
+          <Field label="Last name" required>
+            <TextInput
+              value={userDraft.lastName}
+              onChange={(e) => setUserDraft((d) => ({ ...d, lastName: e.target.value }))}
+            />
+          </Field>
+          <Field label="Email" required span2>
+            <TextInput
+              type="email"
+              value={userDraft.email}
+              onChange={(e) => {
+                setUserDraft((d) => ({ ...d, email: e.target.value }));
+                setSaveError('');
+              }}
+            />
+          </Field>
+          <Field label="Profile" required span2>
+            <Select
+              options={SEED_PROFILES.map((profile) => ({
+                value: profile.role,
+                label: profile.role,
+              }))}
+              value={userDraft.profileRole}
+              onChange={(e) => setUserDraft((d) => ({ ...d, profileRole: e.target.value }))}
+            />
+          </Field>
+          <Field label="Status">
+            <div className="flex h-10 items-center gap-2">
+              <Switch
+                checked={userDraft.status}
+                onChange={(value) => setUserDraft((d) => ({ ...d, status: value }))}
+                label="User status"
+              />
+              <span className="text-sm text-ink-muted">
+                {userDraft.status ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+          </Field>
+          </FieldSection>
+        </FormDrawer>
+      )}
+
       {prefDraft && (
         <FormDrawer
           onClose={() => {
@@ -699,8 +826,8 @@ export default function Setup() {
 function SetupBlock({ title, children, action }) {
   return (
     <Panel>
-      <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
-        <p className="font-display text-title-sm text-ink">{title}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5">
+        <p className="min-w-0 flex-1 font-display text-title-sm text-ink">{title}</p>
         {action}
       </div>
       <div className="p-5">{children}</div>
@@ -710,9 +837,9 @@ function SetupBlock({ title, children, action }) {
 
 function SettingRow({ label, value }) {
   return (
-    <div className="grid grid-cols-3 gap-4 border-b border-line py-2.5 last:border-0">
+    <div className="grid grid-cols-1 gap-1 border-b border-line py-2.5 last:border-0 sm:grid-cols-3 sm:gap-4">
       <div className="text-sm text-ink-muted">{label}</div>
-      <div className="col-span-2 text-sm text-ink">{value || '—'}</div>
+      <div className="min-w-0 break-words text-sm text-ink sm:col-span-2">{value || '—'}</div>
     </div>
   );
 }

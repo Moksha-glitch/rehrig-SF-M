@@ -13,7 +13,6 @@ import { Badge, Button, Page, PageHeader, Panel, Select, StatStrip, AsyncState }
 import { useStore } from '../state/AppStore.jsx';
 import { useRecords } from '../hooks/useRecords.js';
 import { getErrorMessage } from '../lib/errors.js';
-import HomeAssistant from '../components/HomeAssistant.jsx';
 import { useAccounts } from '../hooks/useAccounts.js';
 import {
   useWorkspaceMutations,
@@ -79,11 +78,11 @@ function WidgetShell({ widget, index, count, onMove, onRemove, onDragStart, onDr
         onDrop={(event) => onDrop(event, widget.id)}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="type-overline">{widget.category}</p>
             <h2 className="mt-1 font-display text-title-sm text-ink">{widget.title}</h2>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 flex-wrap items-center gap-1">
             <button
               type="button"
               className="btn-secondary px-2 py-1.5"
@@ -285,7 +284,7 @@ export default function Dashboard() {
     if (id === 'hot-ticket-aging') {
       return <div className="space-y-4">{agingRows.length ? agingRows.map((row) => (
         <div key={row.name}>
-          <div className="mb-1.5 flex justify-between text-xs"><span>{row.name}</span><span className="mono">{row.total}</span></div>
+          <div className="mb-1.5 flex justify-between gap-2 text-xs"><span className="min-w-0 truncate">{row.name}</span><span className="mono shrink-0">{row.total}</span></div>
           <div className="flex h-3 overflow-hidden bg-elevated">{row.buckets.map((value, index) => value ? (
             <span key={index} style={{ width: `${value / row.total * 100}%`, background: AGING_COLORS[index] }} />
           ) : null)}</div>
@@ -354,7 +353,7 @@ export default function Dashboard() {
   return (
     <Page wide>
       <PageHeader
-        overline={now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+        overline={`Home · ${now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`}
         title={`Welcome, ${first}.`}
         description={`${openWorkOrders.length} open work orders · ${activeDispatches.length} active dispatches`}
         actions={available.length ? (
@@ -370,7 +369,6 @@ export default function Dashboard() {
       <AsyncState loading={loading} error={workOrdersQuery.isError ? getErrorMessage(workOrdersQuery.error) : null} onRetry={() => {
         workOrdersQuery.refetch(); dispatchesQuery.refetch(); trucksQuery.refetch(); tipsQuery.refetch(); accountsQuery.refetch(); settingsQuery.refetch();
       }}>
-        <HomeAssistant />
         {layout.length ? (
           <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-12">
             {layout.map((id, index) => {

@@ -10,8 +10,11 @@ export const STEPS = [
   { title: 'Service Provider Products', required: true },
   { title: 'Collection Routes', required: false },
   { title: 'Contacts & Portal Users', required: false },
+  { title: 'Screen Access', required: false },
   { title: 'Review & Activate', required: false },
 ];
+
+export const LAST_STEP = STEPS.length - 1;
 
 /** Errors that block activation (only required steps). */
 export function requiredErrors(errors) {
@@ -70,7 +73,7 @@ export function nextRequiredIncompleteStep(errors, fromStep = -1) {
     if (i !== fromStep && STEPS[i].required && !isStepComplete(errors, i)) return i;
   }
   // All required done — land on Review
-  if (fromStep < 7) return 7;
+  if (fromStep < LAST_STEP) return LAST_STEP;
   return null;
 }
 
@@ -85,7 +88,7 @@ export function pendingIssues(errors) {
 
 /** AI-editable required fields for a step (and review = pending required issues). */
 export function getChatFieldsForStep(f, errors, stepIndex) {
-  if (stepIndex === 7) {
+  if (stepIndex === LAST_STEP) {
     return pendingIssues(errors).map((issue) => ({
       key: issue.key,
       label: issue.message.replace(/\.$/, ''),
@@ -136,7 +139,7 @@ export function getChatFieldsForStep(f, errors, stepIndex) {
 }
 
 export function countRequiredChatFields(stepIndex, f, errors) {
-  if (stepIndex === 7) return Math.max(pendingIssues(errors).length, 1);
+  if (stepIndex === LAST_STEP) return Math.max(pendingIssues(errors).length, 1);
   let defs = STEP_CHAT_DEFS[stepIndex] || [];
   if (stepIndex === 3 && !f.sameAsBilling) {
     defs = [
@@ -429,7 +432,8 @@ export function completeNoteForStep(stepIndex, complete) {
     4: 'This section looks good — products are selected.',
     5: 'This section looks good — routes are ready.',
     6: 'This section looks good — contacts are complete.',
-    7: 'Everything looks good — you can activate this service provider.',
+    7: 'This section looks good — screen access is set.',
+    8: 'Everything looks good — you can activate this service provider.',
   };
   return notes[stepIndex] || 'This section looks good.';
 }

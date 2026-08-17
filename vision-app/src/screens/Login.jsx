@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import Icon from '../components/Icon.jsx';
+import RehrigLogo from '../components/RehrigLogo.jsx';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useDemoUsers } from '../hooks/useDemoUsers.js';
 import { getErrorMessage } from '../lib/errors.js';
@@ -112,39 +113,29 @@ export default function Login() {
   };
 
   return (
-    <main className="min-h-screen w-full bg-[#eaf7fc] p-3 sm:p-5">
+    <main className="flex min-h-screen w-full items-center justify-center bg-[#eaf7fc] p-4 sm:p-6">
       <a href={`#${formDomId}`} className="skip-link">
         Skip to sign in
       </a>
 
-      <div className="grid min-h-[calc(100vh-1.5rem)] w-full grid-cols-2 overflow-hidden border border-[#c7e5f3] bg-white shadow-float sm:min-h-[calc(100vh-2.5rem)]">
+      <div className="grid min-h-0 w-full max-w-[72rem] grid-cols-1 overflow-hidden rounded-2xl border border-[#c7e5f3] bg-white shadow-float lg:min-h-[calc(100vh-3rem)] lg:grid-cols-2">
         <section
-          className="relative flex min-w-0 flex-col overflow-hidden px-6 py-8 sm:px-10 sm:py-10 md:px-12 lg:px-16"
+          className="relative flex min-h-[16rem] min-w-0 flex-col overflow-hidden px-6 py-8 sm:px-10 lg:min-h-0 lg:px-12 lg:py-10"
           style={{
             background:
               'linear-gradient(180deg, #eefaff 0%, #e8f6fd 42%, #b8c9e5 72%, #194a9d 100%)',
           }}
           aria-label="Rehrig Pacific Company"
         >
-          <div className="absolute left-6 top-8 sm:left-10 sm:top-10 md:left-12 lg:left-16">
+          <div className="mb-6 lg:absolute lg:left-12 lg:top-10 lg:mb-0">
             <span className="font-display text-[1.35rem] font-semibold tracking-tight text-[#133f73]">
               vision pulse
             </span>
           </div>
-          <div className="flex flex-1 items-center justify-center pb-28">
-            <div className="text-center text-[#133f73]">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[#174b87]/20 bg-white/45 font-display text-4xl font-semibold shadow-raise">
-                R
-              </div>
-              <h1 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">
-                Rehrig Pacific Company
-              </h1>
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#315d8b]">
-                Since 1913
-              </p>
-            </div>
+          <div className="flex flex-1 items-center justify-center py-6 lg:pb-28">
+            <RehrigLogo />
           </div>
-          <div className="absolute inset-x-6 bottom-8 text-center text-white sm:inset-x-10 sm:bottom-10 lg:inset-x-16">
+          <div className="mt-4 text-center text-white lg:absolute lg:inset-x-12 lg:bottom-10 lg:mt-0">
             <p className="font-display text-lg font-semibold sm:text-xl">
               Secure Partner Gateway
             </p>
@@ -155,7 +146,7 @@ export default function Login() {
         </section>
 
         <section
-          className="flex min-w-0 items-center justify-center border-l border-[#d9e5ed] bg-white px-5 py-10 sm:px-10 md:px-12 lg:px-16"
+          className="flex min-w-0 items-center justify-center border-t border-[#d9e5ed] bg-white px-5 py-8 sm:px-10 lg:border-l lg:border-t-0 lg:px-12 lg:py-10"
           aria-labelledby="signin-heading"
         >
         <div className="w-full max-w-[25rem] animate-fade-up">

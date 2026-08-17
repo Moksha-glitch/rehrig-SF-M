@@ -262,27 +262,21 @@ a {
     padding-right: 2rem;
   }
 
+  .side-nav {
+    transition: width var(--duration-soft) var(--ease-out);
+  }
+
   .nav-item {
     position: relative;
-    border-radius: 0.5rem;
     transition:
       background-color var(--duration-snappy) var(--ease-out),
       color var(--duration-snappy) var(--ease-out);
   }
   .nav-item-active {
-    font-weight: 600;
+    font-weight: 550;
     color: var(--color-ink);
-    background: var(--color-elevated);
-  }
-  .nav-item-active::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 8px;
-    bottom: 8px;
-    width: 2px;
-    background: var(--color-brand);
-    border-radius: 1px;
+    background: var(--color-surface);
+    box-shadow: var(--shadow-raise);
   }
 
   .link-brand {
@@ -320,6 +314,24 @@ a {
 
 .hairline {
   border-color: var(--color-line);
+}
+
+.floating-3d-shield {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0;
+  width: min(240px, 80vw);
+  height: auto;
+  aspect-ratio: 240 / 91;
+  max-height: 91px;
+  flex: none;
+  filter: drop-shadow(0px 16px 40px rgba(255, 255, 255, 0.14902));
+  backdrop-filter: blur(12px);
+  border-radius: 40px;
+  background: rgba(255, 255, 255, 0.28);
 }
 
 /* Editorial login atmosphere */

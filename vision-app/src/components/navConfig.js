@@ -1,15 +1,15 @@
-/** Shared primary navigation trees by persona (top navbar dropdowns). */
+/** Shared primary navigation trees by persona (left sidebar). */
 
 export const NAV = {
   rehrig: [
-    { type: 'item', key: 'home', module: 'home', label: 'Home', icon: 'grid' },
-    { type: 'item', key: 'activity', module: 'activity', label: 'Activity', icon: 'activity' },
+    { type: 'item', key: 'assistant', module: 'assistant', label: 'AI Assistant', icon: 'star' },
+    { type: 'item', key: 'home', module: 'home', label: 'Home', icon: 'home' },
+    { type: 'item', key: 'contacts', module: 'contacts', label: 'Contacts', icon: 'user' },
     {
       type: 'section',
       label: 'Service Providers',
       children: [
         { key: 'accounts', module: 'accounts', label: 'All Providers', icon: 'building' },
-        { key: 'contacts', module: 'contacts', label: 'Contacts', icon: 'user' },
         {
           key: 'contractOnboarding',
           module: 'contractOnboarding',
@@ -22,31 +22,49 @@ export const NAV = {
       type: 'section',
       label: 'Configure',
       children: [
-        { key: 'serviceTypes', module: 'serviceTypes', label: 'Service Types' },
-        { key: 'locationTypes', module: 'locationTypes', label: 'Location Types' },
-        { key: 'assetTypes', module: 'assetTypes', label: 'Asset Types' },
         {
-          key: 'productTypes',
-          module: 'productTypes',
-          label: 'Master Product Catalog',
+          key: 'profileMgmtNav',
+          module: 'setup',
+          params: { section: 'profileMgmt' },
+          label: 'Profile Management',
+          icon: 'lock',
         },
-        { key: 'apiIntegrations', module: 'apiIntegrations', label: 'API Integrations' },
         {
-          key: 'notificationConfig',
-          module: 'notificationConfig',
-          label: 'Notification Config',
+          key: 'userMgmtNav',
+          module: 'setup',
+          params: { section: 'userMgmt' },
+          label: 'User Management',
+          icon: 'users',
+        },
+        { key: 'productTypes', module: 'productTypes', label: 'Product', icon: 'box' },
+        { key: 'device', module: 'device', label: 'Device', icon: 'smartphone' },
+        { key: 'truck', module: 'truck', label: 'Truck', icon: 'truck' },
+        { key: 'apiIntegrations', module: 'apiIntegrations', label: 'API Integrations', icon: 'layers' },
+      ],
+    },
+    {
+      type: 'section',
+      label: 'Analytics',
+      children: [
+        {
+          key: 'reports',
+          module: 'analytics',
+          params: { view: 'reports' },
+          label: 'Reports',
+          icon: 'clipboard',
+        },
+        {
+          key: 'dashboards',
+          module: 'analytics',
+          params: { view: 'dashboards' },
+          label: 'Dashboards',
+          icon: 'barChart',
         },
         {
           key: 'reportSubs',
           module: 'reportSubscriptions',
           label: 'Report Subscriptions',
           icon: 'mail',
-        },
-        {
-          key: 'setup',
-          module: 'setup',
-          params: { section: 'userMgmt' },
-          label: 'Workspace',
         },
       ],
     },
@@ -55,7 +73,10 @@ export const NAV = {
     {
       type: 'section',
       label: 'Overview',
-      children: [{ key: 'home', module: 'home', label: 'Home', icon: 'grid' }],
+      children: [
+        { key: 'assistant', module: 'assistant', label: 'AI Assistant', icon: 'star' },
+        { key: 'home', module: 'home', label: 'Home', icon: 'home' },
+      ],
     },
     {
       type: 'section',
@@ -91,6 +112,13 @@ export const NAV = {
         },
         { key: 'r-locations', module: 'locations', label: 'Locations', icon: 'mapPin' },
         {
+          key: 'r-manage',
+          module: 'account',
+          params: { tab: 'customers' },
+          label: 'Manage Customers',
+          icon: 'users',
+        },
+        {
           key: 'r-routes',
           module: 'account',
           params: { tab: 'routes' },
@@ -119,6 +147,12 @@ export const NAV = {
       children: [
         { key: 'r-assets', module: 'assets', label: 'Assets', icon: 'box' },
         {
+          key: 'r-masterProducts',
+          module: 'productTypes',
+          label: 'Master Product Catalog',
+          icon: 'package',
+        },
+        {
           key: 'r-products',
           module: 'account',
           params: { tab: 'products' },
@@ -137,7 +171,7 @@ export const NAV = {
         {
           key: 'r-mrp',
           module: 'maintenanceRouteProfiles',
-          label: 'Maintenance Route Profiles',
+          label: 'Route Profile Templates',
           icon: 'wrench',
         },
         {
@@ -162,13 +196,13 @@ export const NAV = {
         {
           key: 'r-indTips',
           module: 'individualTips',
-          label: 'Individual Tip / Non-Tip',
+          label: 'Tips & Non-Tips',
           icon: 'layers',
         },
         {
           key: 'r-aggTips',
           module: 'aggregatedTips',
-          label: 'Aggregated Truck and Tips',
+          label: 'Trip Data',
           icon: 'barChart',
         },
         { key: 'devices', module: 'devices', label: 'Devices', icon: 'package' },
@@ -192,7 +226,6 @@ export const NAV = {
           label: 'Dashboards',
           icon: 'barChart',
         },
-        { key: 'activity', module: 'activity', label: 'Activity', icon: 'activity' },
         {
           key: 'reportSubs',
           module: 'reportSubscriptions',
@@ -208,13 +241,27 @@ export const NAV = {
         {
           key: 'r-requestTypes',
           module: 'requestTypeResolutions',
-          label: 'Request Type/Resolutions',
+          label: 'Request Type & Resolution Codes',
           icon: 'layers',
+        },
+        {
+          key: 'r-notifConfig',
+          module: 'notificationConfig',
+          label: 'Service Notification Config',
+          icon: 'bell',
+        },
+        {
+          key: 'r-setup',
+          module: 'setup',
+          params: { section: 'account' },
+          label: 'Workspace',
+          icon: 'lock',
         },
       ],
     },
   ],
   customer: [
+    { type: 'item', key: 'assistant', module: 'assistant', label: 'AI Assistant', icon: 'star' },
     { type: 'item', key: 'home', module: 'home', label: 'Home', icon: 'home' },
     { type: 'item', key: 'myLocations', module: 'myLocations', label: 'My Locations', icon: 'mapPin' },
     {
@@ -236,6 +283,7 @@ export const NAV = {
 };
 
 export const MODULE_LABELS = {
+  assistant: 'AI Assistant',
   home: 'Home',
   accounts: 'Service Providers',
   accountDetail: 'Service Provider',
@@ -244,7 +292,9 @@ export const MODULE_LABELS = {
   serviceTypes: 'Service Types',
   locationTypes: 'Location Types',
   assetTypes: 'Asset Types',
-  productTypes: 'Master Product Catalog',
+  productTypes: 'Product',
+  device: 'Device',
+  truck: 'Truck',
   apiIntegrations: 'API Integrations',
   notificationConfig: 'Notification Config',
   reportSubscriptions: 'Report Subscriptions',
@@ -295,7 +345,10 @@ export function flattenNavDestinations(tree) {
 export function isNavItemActive(item, activeModule, activeParams = {}) {
   if (item.module !== activeModule) return false;
   if (item.params?.tab) return item.params.tab === activeParams.tab;
-  if (item.params?.section) return item.params.section === (activeParams.section || 'userMgmt');
+  if (item.params?.section) {
+    const currentSection = activeParams.section || 'userMgmt';
+    return item.params.section === currentSection;
+  }
   if (item.params?.view) return item.params.view === activeParams.view;
   if (activeModule === 'home') return item.key === 'home';
   return true;

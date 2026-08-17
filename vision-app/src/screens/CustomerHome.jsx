@@ -22,7 +22,6 @@ import { useCreateRecord, useRecords } from '../hooks/useRecords.js';
 import { useNotifications } from '../hooks/useConfig.js';
 import { getErrorMessage } from '../lib/errors.js';
 import { PICKLISTS } from '../data/picklists.js';
-import HomeAssistant from '../components/HomeAssistant.jsx';
 
 function locationLabel(location) {
   return (
@@ -272,7 +271,7 @@ export default function CustomerHome({ view }) {
     return (
       <Page wide>
         <PageHeader
-          overline="Resident"
+          overline="Home"
           title="My Service"
           description="Your locations and collection routes at a glance."
         />
@@ -285,9 +284,6 @@ export default function CustomerHome({ view }) {
             { label: 'Account status', value: account?.inactive ? 'Inactive' : 'Active', hint: account?.name || 'Service provider' },
           ]}
         />
-        <div className="mt-4">
-          <HomeAssistant />
-        </div>
         <LocationsContent
           locations={locations}
           loading={locationsLoading}
