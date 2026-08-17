@@ -146,15 +146,55 @@ function FolderButton({ section, collapsed, open, active, onToggle, isItemActive
           size={collapsed ? 18 : 16}
           className={`shrink-0 ${open || active ? 'text-ink' : 'text-ink-faint'}`}
         />
-        {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{section.label}</span>}
+        {!collapsed && (
+          <>
+            <span className="min-w-0 flex-1 truncate text-left">{section.label}</span>
+            <Icon
+              name="chevronDown"
+              size={14}
+              className={`shrink-0 ${open || active ? 'text-ink-muted' : 'text-ink-faint'}`}
+            />
+          </>
+        )}
       </button>
-      {open && (
+      {open && collapsed && (
         <FolderFlyout
           anchorEl={buttonRef.current}
           section={section}
           isItemActive={isItemActive}
           onSelect={onSelect}
         />
+      )}
+      {open && !collapsed && (
+        <div className="mb-1 ml-4 mt-0.5 space-y-0.5 border-l border-line pl-2" role="menu" aria-label={section.label}>
+          {section.children.map((item) => {
+            const itemActive = isItemActive(item);
+            return (
+              <button
+                key={item.key}
+                type="button"
+                role="menuitem"
+                onClick={() => onSelect(item)}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-left text-[13px] interactive ${
+                  itemActive ? 'bg-surface text-ink' : 'text-ink-muted hover:bg-surface hover:text-ink'
+                }`}
+              >
+                {item.icon ? (
+                  <Icon
+                    name={item.icon}
+                    size={15}
+                    className={`shrink-0 ${itemActive ? 'text-ink' : 'text-ink-faint'}`}
+                  />
+                ) : (
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[10px] font-semibold">
+                    {item.label.charAt(0)}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -197,6 +237,17 @@ export default function SideNav({ open, onToggle }) {
       : null;
 
   useEffect(() => {
+    if (!open) {
+      setOpenFolder(null);
+      return;
+    }
+    const activeSection = tree.find(
+      (node) => node.type === 'section' && node.children?.some((item) => isNavItemActive(item, activeModule, activeParams))
+    );
+    if (activeSection) setOpenFolder(activeSection.label);
+  }, [open, tree, activeModule, activeParams]);
+
+  useEffect(() => {
     const onPointerDown = (event) => {
       if (!accountRef.current?.contains(event.target)) setAccountOpen(false);
       const inShell = shellRef.current?.contains(event.target);
@@ -223,7 +274,7 @@ export default function SideNav({ open, onToggle }) {
     persona === 'rehrig' ? 'Rehrig' : persona === 'sp' ? 'Service Provider' : 'Resident';
 
   const goTo = (item) => {
-    setOpenFolder(null);
+    if (!open) setOpenFolder(null);
     if (item.module === 'assistant') {
       openAssistant();
       return;
