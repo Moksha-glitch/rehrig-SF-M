@@ -9,7 +9,7 @@ export const PERSONA_CONTENT = {
     heading: 'Welcome back! What would you like to work on?',
     intro:
       'I can help review service providers, start onboarding, find contacts, or open configuration tools.',
-    drawerTitle: 'AI Assistant',
+    drawerTitle: 'Vision AI',
     drawerDescription: 'Ask about providers, onboarding, contacts, or Workspace.',
     cards: [
       {
@@ -76,7 +76,7 @@ export const PERSONA_CONTENT = {
     heading: 'Welcome back! How can I help operations today?',
     intro:
       'Ask about work orders, dispatches, routes, fleet activity, or operational reporting.',
-    drawerTitle: 'AI Assistant',
+    drawerTitle: 'Vision AI',
     drawerDescription: 'Ask about work orders, dispatches, fleet, or analytics.',
     cards: [
       {
@@ -149,7 +149,7 @@ export const PERSONA_CONTENT = {
     heading: 'Welcome back! How can I help with your service?',
     intro:
       'Ask about your locations, service requests, notifications, or account information.',
-    drawerTitle: 'AI Assistant',
+    drawerTitle: 'Vision AI',
     drawerDescription: 'Ask about locations, requests, notifications, or your account.',
     cards: [
       {

@@ -25,6 +25,7 @@ import MapCenter from './screens/MapCenter.jsx';
 import BulkImport from './screens/BulkImport.jsx';
 import ContractOnboarding from './screens/ContractOnboarding.jsx';
 import Activity from './screens/Activity.jsx';
+import Notifications from './screens/Notifications.jsx';
 import Devices from './screens/Devices.jsx';
 import ReportSubscriptions from './screens/ReportSubscriptions.jsx';
 import { getErrorMessage } from './lib/errors.js';
@@ -78,6 +79,7 @@ function Router({ onOnboard }) {
     bulkImport: 'bulkImport',
     devices: 'devices',
     activity: 'activity',
+    notifications: 'notifications',
     reportSubscriptions: 'reportSubscriptions',
     analytics: 'analytics',
     myLocations: 'myLocations',
@@ -147,6 +149,8 @@ function Router({ onOnboard }) {
       return <Devices />;
     case 'activity':
       return <Activity />;
+    case 'notifications':
+      return <Notifications />;
     case 'reportSubscriptions':
       return <ReportSubscriptions />;
     case 'onboarding': {

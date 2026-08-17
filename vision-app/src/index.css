@@ -341,14 +341,13 @@ a {
 /* Editorial login atmosphere */
 .login-field {
   width: 100%;
-  border: 0;
-  border-bottom: 1px solid var(--color-line-strong);
-  background: transparent;
-  padding: 0.7rem 0;
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-elevated);
+  padding: 0.7rem 0.9rem;
   font-size: 1rem;
   line-height: 1.4;
   color: var(--color-ink);
-  border-radius: 0;
+  border-radius: 0.75rem;
   box-shadow: none;
   min-height: 2.75rem;
 }
@@ -362,22 +361,22 @@ a {
   color: var(--color-ink-faint);
 }
 .login-field:hover:not(:disabled) {
-  border-bottom-color: var(--color-ink-muted);
+  border-color: var(--color-ink-muted);
 }
 .login-field:focus,
 .login-field:focus-visible {
   outline: none;
-  border-bottom-color: var(--color-brand);
-  box-shadow: 0 1px 0 0 var(--color-brand);
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgba(11, 79, 125, 0.12);
 }
 .login-field-error {
-  border-bottom-color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 .login-field-error:focus,
 .login-field-error:focus-visible {
   outline: none;
-  border-bottom-color: var(--color-danger);
-  box-shadow: 0 1px 0 0 var(--color-danger);
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12);
 }
 .login-field:disabled {
   opacity: 0.6;
@@ -386,7 +385,7 @@ a {
 
 @media (prefers-contrast: more) {
   .login-field {
-    border-bottom-width: 2px;
+    border-width: 2px;
   }
 }
 

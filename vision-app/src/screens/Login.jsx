@@ -113,12 +113,12 @@ export default function Login() {
   };
 
   return (
-    <main className="flex min-h-screen w-full items-center justify-center bg-white p-4 sm:p-6">
+    <main className="box-border flex min-h-screen w-full items-center justify-center bg-white p-4 sm:p-8">
       <a href={`#${formDomId}`} className="skip-link">
         Skip to sign in
       </a>
 
-      <div className="grid min-h-0 w-full max-w-[72rem] grid-cols-1 overflow-hidden rounded-2xl border border-[#c7e5f3] bg-white shadow-float lg:min-h-[calc(100vh-3rem)] lg:grid-cols-2">
+      <div className="grid h-[min(50rem,calc(100vh-8rem))] w-full max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border border-[#c7e5f3] bg-white shadow-float lg:grid-cols-2">
         <section
           className="relative flex min-h-[16rem] min-w-0 flex-col overflow-hidden px-6 py-8 sm:px-10 lg:min-h-0 lg:px-12 lg:py-10"
           style={{
@@ -242,7 +242,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((visible) => !visible)}
-                  className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-control text-ink-faint interactive hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-ink-faint interactive hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   aria-pressed={showPassword}
                   disabled={busy}

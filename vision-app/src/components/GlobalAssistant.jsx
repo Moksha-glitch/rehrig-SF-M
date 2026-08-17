@@ -96,7 +96,7 @@ export default function GlobalAssistant({ onOnboard }) {
     <Drawer
       open={assistantOpen}
       onClose={closeAssistant}
-      title={content.drawerTitle || 'AI Assistant'}
+      title={content.drawerTitle || 'Vision AI'}
       description={
         content.drawerDescription ||
         `Hi ${firstName}. Ask a question or jump to a common workflow.`

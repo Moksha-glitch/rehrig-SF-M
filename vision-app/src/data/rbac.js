@@ -32,6 +32,7 @@ export const ROLE_NAV_KEYS = {
   'sp:Ops Manager': [
     'assistant',
     'home',
+    'notifications',
     'details',
     'mindmap',
     'r-products',
@@ -63,6 +64,7 @@ export const ROLE_NAV_KEYS = {
   'sp:Dispatcher': [
     'assistant',
     'home',
+    'notifications',
     'details',
     'mindmap',
     'r-assets',
@@ -102,6 +104,7 @@ export const ROLE_NAV_KEYS = {
 export const ROLE_MODULES = {
   'rehrig:Admin': [
     'home',
+    'notifications',
     'accounts',
     'accountDetail',
     'contacts',
@@ -123,6 +126,7 @@ export const ROLE_MODULES = {
 
   'sp:Admin': [
     'home',
+    'notifications',
     'account',
     'assets',
     'locations',
@@ -146,6 +150,7 @@ export const ROLE_MODULES = {
 
   'sp:Ops Manager': [
     'home',
+    'notifications',
     'account',
     'assets',
     'locations',
@@ -166,6 +171,7 @@ export const ROLE_MODULES = {
 
   'sp:Dispatcher': [
     'home',
+    'notifications',
     'account',
     'assets',
     'locations',

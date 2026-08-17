@@ -242,7 +242,14 @@ const PATHS = {
   ),
 };
 
-export default function Icon({ name, size = 18, className = '', strokeWidth = 2, ...rest }) {
+export default function Icon({
+  name,
+  size = 18,
+  className = '',
+  strokeWidth = 2,
+  filled = false,
+  ...rest
+}) {
   const inner = PATHS[name] || null;
   return (
     <svg
@@ -250,9 +257,9 @@ export default function Icon({ name, size = 18, className = '', strokeWidth = 2,
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={filled ? 'currentColor' : 'none'}
       stroke="currentColor"
-      strokeWidth={strokeWidth}
+      strokeWidth={filled ? 0 : strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}

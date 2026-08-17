@@ -540,7 +540,7 @@ export function WizardChatbot({
       : 'flex h-full min-h-[420px] flex-col overflow-hidden rounded-panel border border-line bg-surface';
 
   return (
-    <aside className={shell} aria-label="AI Assistant">
+    <aside className={shell} aria-label="Vision AI">
       {/* Slim header */}
       <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3.5">
         <div className="min-w-0">

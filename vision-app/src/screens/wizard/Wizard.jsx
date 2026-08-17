@@ -38,9 +38,60 @@ import {
   requiredErrors,
 } from './wizardSteps.js';
 
-const emptyAddress = { country: 'United States', street: '', city: '', state: '', zip: '' };
-const emptyRoute = () => ({ routeNumber: '', collectionType: 'Trash', days: [false, false, false, false, false, false, false], frequency: 'Weekly' });
-const emptyContact = (role) => ({ firstName: '', lastName: '', email: '', role, portal: true });
+const emptyAddress = { country: '', street: '', city: '', state: '', zip: '' };
+const emptyRoute = () => ({
+  routeNumber: '',
+  collectionType: '',
+  days: [false, false, false, false, false, false, false],
+  frequency: '',
+});
+const emptyContact = (role = '') => ({ firstName: '', lastName: '', email: '', role, portal: false });
+
+function emptyManualForm() {
+  return {
+    accountName: '',
+    accountOwner: '',
+    type: '',
+    parentAccount: '',
+    website: '',
+    phone: '',
+    description: '',
+    industry: '',
+    uid: '',
+    employees: '',
+    supportEmail: '',
+    inactive: false,
+    serviceTypes: [],
+    modules: '',
+    enableAutoWO: false,
+    enableAutoHotTicket: false,
+    autoHotTicketDays: '',
+    enableMoveBurntCarts: false,
+    notif: {
+      enableTab: false,
+      send: false,
+      messageLimit: '',
+      timeZone: '',
+      startTime: '',
+      endTime: '',
+      emailSendTime: '',
+      smsSendTime: '',
+      smsFailed: false,
+      phoneFailed: false,
+      sendGridFailed: false,
+    },
+    hardwareType: '',
+    trackObservations: false,
+    trackSafetyEvents: false,
+    billing: { ...emptyAddress },
+    shipping: { ...emptyAddress },
+    sameAsBilling: false,
+    products: {},
+    routes: [emptyRoute()],
+    contacts: [emptyContact()],
+    screenAccess: buildScreenModules('none'),
+  };
+}
 
 function HeroBanner({ children }) {
   return (
@@ -103,12 +154,17 @@ function validateWizard(f) {
   }
   if (f.supportEmail && !EMAIL_RE.test(f.supportEmail.trim())) errors.supportEmail = 'Enter a valid email address.';
   if (!validWebsite(f.website)) errors.website = 'Enter a valid website, such as example.com.';
-  if (!Number.isInteger(Number(f.employees)) || Number(f.employees) < 0) errors.employees = 'Enter a whole number of 0 or more.';
+  const employeesBlank = f.employees === '' || f.employees == null;
+  if (!employeesBlank && (!Number.isInteger(Number(f.employees)) || Number(f.employees) < 0)) {
+    errors.employees = 'Enter a whole number of 0 or more.';
+  }
   if (!f.serviceTypes?.length) errors.serviceTypes = 'Select at least one service type.';
-  if (f.enableAutoHotTicket && (!Number.isInteger(Number(f.autoHotTicketDays)) || Number(f.autoHotTicketDays) < 1)) {
+  const hotDaysBlank = f.autoHotTicketDays === '' || f.autoHotTicketDays == null;
+  if (f.enableAutoHotTicket && (hotDaysBlank || !Number.isInteger(Number(f.autoHotTicketDays)) || Number(f.autoHotTicketDays) < 1)) {
     errors.autoHotTicketDays = 'Enter a whole number of at least 1.';
   }
-  if (!Number.isInteger(Number(f.notif?.messageLimit)) || Number(f.notif?.messageLimit) < 1) {
+  const limitBlank = f.notif?.messageLimit === '' || f.notif?.messageLimit == null;
+  if (!limitBlank && (!Number.isInteger(Number(f.notif?.messageLimit)) || Number(f.notif?.messageLimit) < 1)) {
     errors.messageLimit = 'Enter a whole number of at least 1.';
   }
   ['billing', ...(f.sameAsBilling ? [] : ['shipping'])].forEach((kind) => {
@@ -186,49 +242,7 @@ export default function Wizard({ onClose, draftId = null }) {
         screenAccess: form.screenAccess?.length ? form.screenAccess : buildScreenModules('all'),
       };
     }
-    return {
-      accountName: '',
-      accountOwner: state.currentUser?.name || 'Yolanda Wagner',
-      type: 'Customer',
-      parentAccount: '',
-      website: '',
-      phone: '',
-      description: '',
-      industry: 'Municipal',
-      uid: '',
-      employees: 0,
-      supportEmail: '',
-      inactive: false,
-      serviceTypes: [],
-      modules: '',
-      enableAutoWO: true,
-      enableAutoHotTicket: true,
-      autoHotTicketDays: 1,
-      enableMoveBurntCarts: false,
-      notif: {
-        enableTab: true,
-        send: true,
-        messageLimit: 100,
-        timeZone: 'America/Edmonton',
-        startTime: '07:00',
-        endTime: '20:00',
-        emailSendTime: '08:00',
-        smsSendTime: '09:00',
-        smsFailed: false,
-        phoneFailed: false,
-        sendGridFailed: false,
-      },
-      hardwareType: 'RFID',
-      trackObservations: false,
-      trackSafetyEvents: false,
-      billing: { ...emptyAddress },
-      shipping: { ...emptyAddress },
-      sameAsBilling: false,
-      products: {},
-      routes: [emptyRoute()],
-      contacts: [emptyContact('Service Provider Admin')],
-      screenAccess: buildScreenModules('all'),
-    };
+    return emptyManualForm();
   });
 
   useEffect(() => {
@@ -404,7 +418,7 @@ export default function Wizard({ onClose, draftId = null }) {
       ),
     });
 
-  const addContact = () => set({ contacts: [...f.contacts, emptyContact('Dispatcher')] });
+  const addContact = () => set({ contacts: [...f.contacts, emptyContact()] });
   const removeContact = (i) => set({ contacts: f.contacts.filter((_, k) => k !== i) });
   const setContact = (i, patch) =>
     set({ contacts: f.contacts.map((c, k) => (k === i ? { ...c, ...patch } : c)) });
@@ -416,6 +430,8 @@ export default function Wizard({ onClose, draftId = null }) {
     setChatFocusKey(null);
     setChatError('');
     setMessages([]);
+    setF(emptyManualForm());
+    setShowErrors(false);
     setPhase('steps');
     setStep(0);
     setVisited({ 0: true });
@@ -1070,11 +1086,11 @@ function Step1({ f, set, missingKeys = new Set(), errors = {} }) {
         <Field label="Account Owner">
           <div className="field-input flex items-center gap-2 bg-elevated text-ink-muted">
             <Icon name="users" size={14} className="shrink-0 text-ink-faint" />
-            <span className="truncate">{f.accountOwner}</span>
+            <span className="truncate">{f.accountOwner || '—'}</span>
           </div>
         </Field>
         <Field label="Type">
-          <Select options={PICKLISTS.accountType} value={f.type} onChange={(e) => set({ type: e.target.value })} />
+          <Select options={PICKLISTS.accountType} placeholder="Select…" value={f.type} onChange={(e) => set({ type: e.target.value })} />
         </Field>
         <Field label="Parent Account">
           <TextInput placeholder="Search accounts…" value={f.parentAccount} onChange={(e) => set({ parentAccount: e.target.value })} />
@@ -1110,7 +1126,7 @@ function Step1({ f, set, missingKeys = new Set(), errors = {} }) {
           </div>
         </Field>
         <Field label="Industry">
-          <Select options={PICKLISTS.industry} value={f.industry} onChange={(e) => set({ industry: e.target.value })} />
+          <Select options={PICKLISTS.industry} placeholder="Select…" value={f.industry} onChange={(e) => set({ industry: e.target.value })} />
         </Field>
         <Field label="Employees">
           <TextInput type="number" min="0" step="1" value={f.employees} onChange={(e) => set({ employees: e.target.value })} aria-invalid={!!errors.employees} className={warnInput(errors.employees)} />
@@ -1243,7 +1259,7 @@ function Step2({ f, set, setNotif, toggleServiceType, errors = {} }) {
               <InlineError message={errors.messageLimit} />
             </Field>
             <Field label="Time Zone">
-              <Select options={PICKLISTS.timeZone} value={f.notif.timeZone} onChange={(e) => setNotif({ timeZone: e.target.value })} />
+              <Select options={PICKLISTS.timeZone} placeholder="Select…" value={f.notif.timeZone} onChange={(e) => setNotif({ timeZone: e.target.value })} />
             </Field>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Start Time">
@@ -1278,7 +1294,9 @@ function Step2({ f, set, setNotif, toggleServiceType, errors = {} }) {
 }
 
 function Step3({ f, set }) {
-  const preview = f.trackObservations || f.trackSafetyEvents
+  const preview = !f.hardwareType
+    ? 'Select a hardware type to preview how carts will be identified.'
+    : f.trackObservations || f.trackSafetyEvents
     ? `Carts will be identified via ${f.hardwareType} hardware, and drivers will capture ${[
         f.trackObservations && 'observations',
         f.trackSafetyEvents && 'safety events',
@@ -1352,7 +1370,7 @@ function AddressPanel({ title, addr, onChange, disabled, header, errorPrefix, er
       </Field>
       <div className="mt-4 space-y-4">
         <Field label="Country">
-          <Select options={PICKLISTS.country} value={addr.country} disabled={disabled} onChange={(e) => onChange({ country: e.target.value })} />
+          <Select options={PICKLISTS.country} placeholder="Select…" value={addr.country} disabled={disabled} onChange={(e) => onChange({ country: e.target.value })} />
         </Field>
         <Field label="Street">
           <div data-wizard-field={`${errorPrefix}.street`} id={`wizard-field-${errorPrefix}-street`}>
@@ -1490,7 +1508,7 @@ function Step6({ f, addRoute, removeRoute, setRoute, toggleRouteDay, errors = {}
               </div>
               <div>
                 {i === 0 && <div className="type-overline mb-1">Collection Type</div>}
-                <Select options={PICKLISTS.routeCollectionType} value={r.collectionType} onChange={(e) => setRoute(i, { collectionType: e.target.value })} />
+                <Select options={PICKLISTS.routeCollectionType} placeholder="Select…" value={r.collectionType} onChange={(e) => setRoute(i, { collectionType: e.target.value })} />
               </div>
               <div data-wizard-field={`routes.${i}.days`} id={`wizard-field-routes-${i}-days`}>
                 {i === 0 && <div className="type-overline mb-1">Days</div>}
@@ -1512,7 +1530,7 @@ function Step6({ f, addRoute, removeRoute, setRoute, toggleRouteDay, errors = {}
               <div className="flex items-end gap-2">
                 <div className="flex-1">
                   {i === 0 && <div className="type-overline mb-1">Frequency</div>}
-                  <Select options={['Weekly', 'Bi-Weekly']} value={r.frequency} onChange={(e) => setRoute(i, { frequency: e.target.value })} />
+                  <Select options={['Weekly', 'Bi-Weekly']} placeholder="Select…" value={r.frequency} onChange={(e) => setRoute(i, { frequency: e.target.value })} />
                 </div>
                 <button
                   onClick={() => removeRoute(i)}
@@ -1565,7 +1583,7 @@ function Step7({ f, addContact, removeContact, setContact, errors = {} }) {
               </div>
               <div>
                 {i === 0 && <div className="type-overline mb-1">Role</div>}
-                <Select options={PICKLISTS.wizardRole} value={c.role} onChange={(e) => setContact(i, { role: e.target.value })} />
+                <Select options={PICKLISTS.wizardRole} placeholder="Select…" value={c.role} onChange={(e) => setContact(i, { role: e.target.value })} />
               </div>
               <div className="flex items-end justify-between gap-2">
                 <Checkbox label="Portal user" checked={c.portal} onChange={(e) => setContact(i, { portal: e.target.checked })} />
@@ -1645,15 +1663,15 @@ function StepScreenAccess({ modules, onChange }) {
   return (
     <>
       <p className="mt-1 text-sm text-ink-muted">
-        Choose which screens this Service Provider account can see. Everything starts enabled — turn
-        off anything outside this contract.
+        Choose which screens this Service Provider account can see. Nothing is enabled until you turn
+        it on.
       </p>
       <div className="mt-4 flex items-start gap-2 rounded-panel border border-brand/25 bg-brand-soft px-3 py-2.5">
         <Icon name="help" size={16} className="mt-0.5 shrink-0 text-brand" />
         <p className="text-sm leading-relaxed text-ink-soft">
-          Everything is enabled by default. Based on the signed contract or the Service Provider&apos;s
-          request, turn off anything they should not see. Click a module to expand its screens, or use
-          the toggle on the module row to flip everything inside it at once.
+          Nothing is enabled by default. Turn on the screens this Service Provider should see, based
+          on the signed contract or their request. Click a module to expand its screens, or use the
+          toggle on the module row to flip everything inside it at once.
         </p>
       </div>
       <div className="mt-4 divide-y divide-line overflow-hidden rounded-panel border border-line bg-surface">

@@ -110,6 +110,7 @@ export default function VisionChat({ onOnboard, onClose }) {
   const timerRef = useRef(null);
   const messageId = useRef(0);
   const logRef = useRef(null);
+  const menusRef = useRef(null);
 
   useEffect(() => {
     const focusTimer = window.setTimeout(() => {
@@ -125,6 +126,27 @@ export default function VisionChat({ onOnboard, onClose }) {
     if (!logRef.current) return;
     logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [messages, busy]);
+
+  useEffect(() => {
+    if (!historyOpen && !favsOpen) return undefined;
+    const closeMenus = () => {
+      setHistoryOpen(false);
+      setFavsOpen(false);
+    };
+    const onPointerDown = (event) => {
+      if (menusRef.current?.contains(event.target)) return;
+      closeMenus();
+    };
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') closeMenus();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [historyOpen, favsOpen]);
 
   const chips = pageHelp?.chips || content.chips;
   const question =
@@ -197,6 +219,9 @@ export default function VisionChat({ onOnboard, onClose }) {
   const currentTitle = titleFromMessages(messages);
   const currentIsFavorite = messages.length > 0 && favorites.some((item) => item.title === currentTitle);
 
+  const isFavorite = (thread) =>
+    !!thread?.title && favorites.some((item) => item.title === thread.title);
+
   const toggleFavorite = (thread) => {
     if (!thread?.title) return;
     setFavorites((prev) => {
@@ -207,6 +232,21 @@ export default function VisionChat({ onOnboard, onClose }) {
       writeFavorites(next);
       return next;
     });
+  };
+
+  const removeHistory = (thread) => {
+    setHistory((prev) => {
+      const next = prev.filter((item) => item.id !== thread.id && item.title !== thread.title);
+      writeHistory(next);
+      return next;
+    });
+  };
+
+  const currentThread = {
+    id: `current-${currentTitle}`,
+    title: currentTitle,
+    messages,
+    page: pageLabel,
   };
 
   const newChat = () => {
@@ -231,12 +271,7 @@ export default function VisionChat({ onOnboard, onClose }) {
       aria-label="Vision AI"
     >
       <div className="flex h-12 shrink-0 items-center justify-between gap-2 px-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand text-[10px] font-bold text-white">
-            V
-          </span>
-          <div className="truncate font-display text-sm font-semibold text-ink">Vision AI</div>
-        </div>
+        <div className="min-w-0 truncate font-display text-sm font-semibold text-ink">Vision AI</div>
         <div className="flex shrink-0 items-center">
           <button
             type="button"
@@ -248,6 +283,7 @@ export default function VisionChat({ onOnboard, onClose }) {
             <Icon name="plus" size={14} />
             New chat
           </button>
+          <div ref={menusRef} className="flex items-center">
           <div className="relative">
             <button
               type="button"
@@ -256,36 +292,28 @@ export default function VisionChat({ onOnboard, onClose }) {
                 setFavsOpen((open) => !open);
               }}
               className={`relative rounded-lg p-1.5 hover:bg-elevated ${
-                favsOpen || currentIsFavorite ? 'text-brand' : 'text-ink-muted hover:text-ink'
+                currentIsFavorite || favsOpen ? 'text-brand' : 'text-ink-muted hover:text-ink'
               }`}
               aria-label="Favorite chats"
               aria-expanded={favsOpen}
-              title="Favorites"
+              aria-pressed={currentIsFavorite}
+              title={currentIsFavorite ? 'Favorited' : 'Favorites'}
             >
-              <Icon name="star" size={16} />
-              {favorites.length > 0 && (
-                <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-brand" />
-              )}
+              <Icon name="star" size={16} filled={currentIsFavorite} />
             </button>
             {favsOpen && (
-              <div className="absolute right-0 z-20 mt-1 w-64 rounded-panel border border-line bg-surface p-1.5 shadow-float">
+              <div className="absolute right-0 z-20 mt-1 w-72 rounded-2xl border border-line bg-surface p-1.5 shadow-float">
                 <div className="px-2.5 pb-1 pt-1.5 type-overline">Favorites</div>
                 {messages.length > 0 && (
                   <button
                     type="button"
-                    onClick={() =>
-                      toggleFavorite({
-                        id: `fav-${Date.now().toString(36)}`,
-                        title: currentTitle,
-                        messages,
-                        page: pageLabel,
-                      })
-                    }
-                    className="mb-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left hover:bg-elevated"
+                    onClick={() => toggleFavorite(currentThread)}
+                    className="mb-1 flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left hover:bg-elevated"
                   >
                     <Icon
                       name="star"
-                      size={13}
+                      size={14}
+                      filled={currentIsFavorite}
                       className={currentIsFavorite ? 'text-brand' : 'text-ink-faint'}
                     />
                     <span className="text-xs font-medium text-ink">
@@ -295,11 +323,14 @@ export default function VisionChat({ onOnboard, onClose }) {
                 )}
                 {favorites.length ? (
                   favorites.map((thread) => (
-                    <div key={thread.id} className="flex items-center gap-1">
+                    <div
+                      key={thread.id}
+                      className="group flex items-center gap-0.5 rounded-xl hover:bg-elevated"
+                    >
                       <button
                         type="button"
                         onClick={() => openThread(thread)}
-                        className="min-w-0 flex-1 rounded-lg px-2.5 py-2 text-left hover:bg-elevated"
+                        className="min-w-0 flex-1 px-2.5 py-2 text-left"
                       >
                         <div className="truncate text-xs font-medium text-ink">{thread.title}</div>
                         <div className="truncate text-[10px] text-ink-faint">{thread.page}</div>
@@ -307,11 +338,20 @@ export default function VisionChat({ onOnboard, onClose }) {
                       <button
                         type="button"
                         onClick={() => toggleFavorite(thread)}
-                        className="rounded-lg p-1.5 text-brand hover:bg-elevated"
-                        aria-label={`Remove ${thread.title} from favorites`}
-                        title="Remove"
+                        className="rounded-lg p-1.5 text-brand opacity-100"
+                        aria-label={`Unfavorite ${thread.title}`}
+                        title="Unfavorite"
                       >
-                        <Icon name="star" size={13} />
+                        <Icon name="star" size={14} filled />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleFavorite(thread)}
+                        className="mr-1 rounded-lg p-1.5 text-ink-faint opacity-0 hover:bg-danger-soft hover:text-danger group-hover:opacity-100"
+                        aria-label={`Delete ${thread.title}`}
+                        title="Delete"
+                      >
+                        <Icon name="trash" size={14} />
                       </button>
                     </div>
                   ))
@@ -336,43 +376,54 @@ export default function VisionChat({ onOnboard, onClose }) {
               title="History"
             >
               <Icon name="clock" size={16} />
-              {history.length > 0 && (
-                <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-brand" />
-              )}
             </button>
             {historyOpen && (
-              <div className="absolute right-0 z-20 mt-1 w-64 rounded-panel border border-line bg-surface p-1.5 shadow-float">
+              <div className="absolute right-0 z-20 mt-1 w-72 rounded-2xl border border-line bg-surface p-1.5 shadow-float">
                 {history.length ? (
-                  history.map((thread) => (
-                    <div key={thread.id} className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openThread(thread)}
-                        className="min-w-0 flex-1 rounded-lg px-2.5 py-2 text-left hover:bg-elevated"
+                  history.map((thread) => {
+                    const favored = isFavorite(thread);
+                    return (
+                      <div
+                        key={thread.id}
+                        className="group flex items-center gap-0.5 rounded-xl hover:bg-elevated"
                       >
-                        <div className="truncate text-xs font-medium text-ink">{thread.title}</div>
-                        <div className="truncate text-[10px] text-ink-faint">{thread.page}</div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleFavorite(thread)}
-                        className={`rounded-lg p-1.5 hover:bg-elevated ${
-                          favorites.some((item) => item.title === thread.title)
-                            ? 'text-brand'
-                            : 'text-ink-faint'
-                        }`}
-                        aria-label={`Favorite ${thread.title}`}
-                        title="Favorite"
-                      >
-                        <Icon name="star" size={13} />
-                      </button>
-                    </div>
-                  ))
+                        <button
+                          type="button"
+                          onClick={() => openThread(thread)}
+                          className="min-w-0 flex-1 px-2.5 py-2 text-left"
+                        >
+                          <div className="truncate text-xs font-medium text-ink">{thread.title}</div>
+                          <div className="truncate text-[10px] text-ink-faint">{thread.page}</div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleFavorite(thread)}
+                          className={`rounded-lg p-1.5 ${
+                            favored ? 'text-brand' : 'text-ink-faint hover:text-ink'
+                          }`}
+                          aria-label={favored ? `Unfavorite ${thread.title}` : `Favorite ${thread.title}`}
+                          title={favored ? 'Unfavorite' : 'Favorite'}
+                        >
+                          <Icon name="star" size={14} filled={favored} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeHistory(thread)}
+                          className="mr-1 rounded-lg p-1.5 text-ink-faint opacity-0 hover:bg-danger-soft hover:text-danger group-hover:opacity-100"
+                          aria-label={`Delete ${thread.title}`}
+                          title="Delete"
+                        >
+                          <Icon name="trash" size={14} />
+                        </button>
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="px-2.5 py-3 text-xs text-ink-muted">No earlier chats yet.</div>
                 )}
               </div>
             )}
+          </div>
           </div>
           <button
             type="button"
