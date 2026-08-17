@@ -45,14 +45,105 @@ export function errorsForStep(errors, stepIndex) {
 }
 
 export function isStepComplete(errors, stepIndex) {
-  // Non-required steps always show as completed in the rail
+  // Optional steps can be skipped — do not block Next
   if (!STEPS[stepIndex]?.required) return true;
   return errorsForStep(errors, stepIndex).length === 0;
 }
 
-export function getStepStatuses(errors) {
+function addressHasContent(addr) {
+  return Boolean(
+    addr?.country?.trim() ||
+      addr?.street?.trim() ||
+      addr?.city?.trim() ||
+      addr?.state?.trim() ||
+      addr?.zip?.trim()
+  );
+}
+
+/** True when the user has entered something on this step. */
+export function hasStepContent(f, stepIndex) {
+  if (!f) return false;
+  if (stepIndex === 0) {
+    return Boolean(
+      f.accountName?.trim() ||
+        f.type?.trim() ||
+        f.parentAccount?.trim() ||
+        f.website?.trim() ||
+        f.phone?.trim() ||
+        f.description?.trim() ||
+        f.industry?.trim() ||
+        f.uid?.trim() ||
+        String(f.employees ?? '').trim() ||
+        f.supportEmail?.trim() ||
+        f.inactive
+    );
+  }
+  if (stepIndex === 1) {
+    const n = f.notif || {};
+    return Boolean(
+      f.serviceTypes?.length ||
+        f.modules?.trim() ||
+        f.enableAutoWO ||
+        f.enableAutoHotTicket ||
+        String(f.autoHotTicketDays ?? '').trim() ||
+        f.enableMoveBurntCarts ||
+        n.enableTab ||
+        n.send ||
+        String(n.messageLimit ?? '').trim() ||
+        n.timeZone?.trim() ||
+        n.startTime ||
+        n.endTime ||
+        n.emailSendTime ||
+        n.smsSendTime ||
+        n.smsFailed ||
+        n.phoneFailed ||
+        n.sendGridFailed
+    );
+  }
+  if (stepIndex === 2) {
+    return Boolean(f.hardwareType || f.trackObservations || f.trackSafetyEvents);
+  }
+  if (stepIndex === 3) {
+    return f.sameAsBilling || addressHasContent(f.billing) || addressHasContent(f.shipping);
+  }
+  if (stepIndex === 4) {
+    return Object.values(f.products || {}).some((product) => product?.selected);
+  }
+  if (stepIndex === 5) {
+    return (f.routes || []).some(
+      (route) =>
+        route.routeNumber?.trim() ||
+        route.collectionType?.trim() ||
+        route.frequency?.trim() ||
+        route.days?.some(Boolean)
+    );
+  }
+  if (stepIndex === 6) {
+    return (f.contacts || []).some(
+      (contact) =>
+        contact.firstName?.trim() ||
+        contact.lastName?.trim() ||
+        contact.email?.trim() ||
+        contact.role?.trim() ||
+        contact.portal
+    );
+  }
+  if (stepIndex === 7) {
+    return (f.screenAccess || []).some((group) => group.screens?.some((screen) => screen.view));
+  }
+  return true;
+}
+
+/** Rail / banner: required steps need valid fields; optional steps stay empty until filled. */
+export function isStepFilled(f, errors, stepIndex) {
+  if (stepIndex === LAST_STEP) return errorsForStep(errors, stepIndex).length === 0;
+  if (STEPS[stepIndex]?.required) return errorsForStep(errors, stepIndex).length === 0;
+  return hasStepContent(f, stepIndex) && errorsForStep(errors, stepIndex).length === 0;
+}
+
+export function getStepStatuses(f, errors) {
   return STEPS.map((step, index) => {
-    const complete = isStepComplete(errors, index);
+    const complete = isStepFilled(f, errors, index);
     const issueCount = errorsForStep(errors, index).length;
     return {
       ...step,

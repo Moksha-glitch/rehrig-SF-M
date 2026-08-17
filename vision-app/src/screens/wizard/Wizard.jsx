@@ -28,6 +28,7 @@ import {
   STEPS,
   LAST_STEP,
   isStepComplete,
+  isStepFilled,
   getStepStatuses,
   nextRequiredIncompleteStep,
   pendingIssues,
@@ -46,6 +47,17 @@ const emptyRoute = () => ({
   frequency: '',
 });
 const emptyContact = (role = '') => ({ firstName: '', lastName: '', email: '', role, portal: false });
+
+const BLANK_SELECT = new Set(['', '--None--', 'None', 'Select…']);
+function picklistOptions(options = []) {
+  return options.filter((option) => {
+    const value = option && typeof option === 'object' ? option.value ?? option.k ?? '' : option;
+    return !BLANK_SELECT.has(String(value ?? ''));
+  });
+}
+function selectValue(value) {
+  return BLANK_SELECT.has(String(value ?? '')) ? '' : value;
+}
 
 function emptyManualForm() {
   return {
@@ -272,15 +284,16 @@ export default function Wizard({ onClose, draftId = null }) {
   const validationErrors = useMemo(() => validateWizard(f), [f]);
   const blockingErrors = useMemo(() => requiredErrors(validationErrors), [validationErrors]);
   const isValid = Object.keys(blockingErrors).length === 0;
-  const stepStatuses = useMemo(() => getStepStatuses(validationErrors), [validationErrors]);
+  const stepStatuses = useMemo(() => getStepStatuses(f, validationErrors), [f, validationErrors]);
   const stepComplete = isStepComplete(validationErrors, step);
+  const stepFilled = isStepFilled(f, validationErrors, step);
   const missingFields = useMemo(
     () => getMissingWizardFields(f, validationErrors, step),
     [f, validationErrors, step]
   );
   const missingKeys = useMemo(() => new Set(missingFields.map((x) => x.key)), [missingFields]);
   const reviewIssues = useMemo(() => pendingIssues(validationErrors), [validationErrors]);
-  const sectionNote = completeNoteForStep(step, stepComplete);
+  const sectionNote = completeNoteForStep(step, stepFilled);
   const showChat = phase === 'steps' && chatOpen;
 
   const pushMessage = useCallback((role, text, options = []) => {
@@ -368,7 +381,7 @@ export default function Wizard({ onClose, draftId = null }) {
     setMessages([]);
     setChatError('');
     const fields = getMissingWizardFields(f, validationErrors, step);
-    const note = completeNoteForStep(step, isStepComplete(validationErrors, step));
+    const note = completeNoteForStep(step, isStepFilled(f, validationErrors, step));
     if (note) {
       setChatFocusKey(null);
       pushMessage('assistant', note);
@@ -788,7 +801,7 @@ export default function Wizard({ onClose, draftId = null }) {
               )}
               {stepStatuses.map((s) => {
                 const current = s.index === step;
-                const done = s.complete && (visited[s.index] || s.index < step || !s.required);
+                const done = s.complete && (visited[s.index] || s.index < step);
                 return (
                   <button
                     key={s.title}
@@ -887,7 +900,7 @@ export default function Wizard({ onClose, draftId = null }) {
                   </div>
                 </div>
               )}
-              {stepComplete && step < LAST_STEP && (
+              {stepFilled && step < LAST_STEP && (
                 <div className="mt-3 flex items-start gap-2 rounded-panel border border-success/25 bg-success-soft px-3 py-2.5">
                   <Icon name="checkCircle" size={16} className="mt-0.5 shrink-0 text-success" />
                   <div className="text-sm font-medium text-ink-soft">
@@ -926,7 +939,7 @@ export default function Wizard({ onClose, draftId = null }) {
               )}
               {step === 7 && (
                 <StepScreenAccess
-                  modules={f.screenAccess || buildScreenModules('all')}
+                  modules={f.screenAccess || buildScreenModules('none')}
                   onChange={(screenAccess) => set({ screenAccess })}
                 />
               )}
@@ -1090,7 +1103,7 @@ function Step1({ f, set, missingKeys = new Set(), errors = {} }) {
           </div>
         </Field>
         <Field label="Type">
-          <Select options={PICKLISTS.accountType} placeholder="Select…" value={f.type} onChange={(e) => set({ type: e.target.value })} />
+          <Select options={picklistOptions(PICKLISTS.accountType)} placeholder="Select…" value={selectValue(f.type)} onChange={(e) => set({ type: e.target.value })} />
         </Field>
         <Field label="Parent Account">
           <TextInput placeholder="Search accounts…" value={f.parentAccount} onChange={(e) => set({ parentAccount: e.target.value })} />
@@ -1126,7 +1139,7 @@ function Step1({ f, set, missingKeys = new Set(), errors = {} }) {
           </div>
         </Field>
         <Field label="Industry">
-          <Select options={PICKLISTS.industry} placeholder="Select…" value={f.industry} onChange={(e) => set({ industry: e.target.value })} />
+          <Select options={picklistOptions(PICKLISTS.industry)} placeholder="Select…" value={selectValue(f.industry)} onChange={(e) => set({ industry: e.target.value })} />
         </Field>
         <Field label="Employees">
           <TextInput type="number" min="0" step="1" value={f.employees} onChange={(e) => set({ employees: e.target.value })} aria-invalid={!!errors.employees} className={warnInput(errors.employees)} />
@@ -1170,7 +1183,7 @@ function Step2({ f, set, setNotif, toggleServiceType, errors = {} }) {
 
       <div className="mb-2 text-sm">
         {f.serviceTypes.length === 0 ? (
-          <span className="font-medium text-danger">None selected</span>
+          <span className="font-medium text-ink-faint">None selected</span>
         ) : (
           <span className="font-medium text-ink-muted">{f.serviceTypes.length} selected</span>
         )}
@@ -1259,7 +1272,7 @@ function Step2({ f, set, setNotif, toggleServiceType, errors = {} }) {
               <InlineError message={errors.messageLimit} />
             </Field>
             <Field label="Time Zone">
-              <Select options={PICKLISTS.timeZone} placeholder="Select…" value={f.notif.timeZone} onChange={(e) => setNotif({ timeZone: e.target.value })} />
+              <Select options={picklistOptions(PICKLISTS.timeZone)} placeholder="Select…" value={selectValue(f.notif.timeZone)} onChange={(e) => setNotif({ timeZone: e.target.value })} />
             </Field>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Start Time">
@@ -1370,7 +1383,7 @@ function AddressPanel({ title, addr, onChange, disabled, header, errorPrefix, er
       </Field>
       <div className="mt-4 space-y-4">
         <Field label="Country">
-          <Select options={PICKLISTS.country} placeholder="Select…" value={addr.country} disabled={disabled} onChange={(e) => onChange({ country: e.target.value })} />
+          <Select options={picklistOptions(PICKLISTS.country)} placeholder="Select…" value={selectValue(addr.country)} disabled={disabled} onChange={(e) => onChange({ country: e.target.value })} />
         </Field>
         <Field label="Street">
           <div data-wizard-field={`${errorPrefix}.street`} id={`wizard-field-${errorPrefix}-street`}>
@@ -1386,7 +1399,7 @@ function AddressPanel({ title, addr, onChange, disabled, header, errorPrefix, er
         </Field>
         <Field label="State / Province">
           <div data-wizard-field={`${errorPrefix}.state`} id={`wizard-field-${errorPrefix}-state`}>
-            <Select options={PICKLISTS.wizardProvinceState} placeholder="Select…" value={addr.state} disabled={disabled} onChange={(e) => onChange({ state: e.target.value })} aria-invalid={!!errors[`${errorPrefix}.state`]} className={warnInput(errors[`${errorPrefix}.state`])} />
+            <Select options={picklistOptions(PICKLISTS.wizardProvinceState)} placeholder="Select…" value={selectValue(addr.state)} disabled={disabled} onChange={(e) => onChange({ state: e.target.value })} aria-invalid={!!errors[`${errorPrefix}.state`]} className={warnInput(errors[`${errorPrefix}.state`])} />
             <InlineError message={errors[`${errorPrefix}.state`]} />
           </div>
         </Field>
@@ -1508,7 +1521,7 @@ function Step6({ f, addRoute, removeRoute, setRoute, toggleRouteDay, errors = {}
               </div>
               <div>
                 {i === 0 && <div className="type-overline mb-1">Collection Type</div>}
-                <Select options={PICKLISTS.routeCollectionType} placeholder="Select…" value={r.collectionType} onChange={(e) => setRoute(i, { collectionType: e.target.value })} />
+                <Select options={picklistOptions(PICKLISTS.routeCollectionType)} placeholder="Select…" value={selectValue(r.collectionType)} onChange={(e) => setRoute(i, { collectionType: e.target.value })} />
               </div>
               <div data-wizard-field={`routes.${i}.days`} id={`wizard-field-routes-${i}-days`}>
                 {i === 0 && <div className="type-overline mb-1">Days</div>}
@@ -1530,7 +1543,7 @@ function Step6({ f, addRoute, removeRoute, setRoute, toggleRouteDay, errors = {}
               <div className="flex items-end gap-2">
                 <div className="flex-1">
                   {i === 0 && <div className="type-overline mb-1">Frequency</div>}
-                  <Select options={['Weekly', 'Bi-Weekly']} placeholder="Select…" value={r.frequency} onChange={(e) => setRoute(i, { frequency: e.target.value })} />
+                  <Select options={['Weekly', 'Bi-Weekly']} placeholder="Select…" value={selectValue(r.frequency)} onChange={(e) => setRoute(i, { frequency: e.target.value })} />
                 </div>
                 <button
                   onClick={() => removeRoute(i)}
@@ -1583,7 +1596,7 @@ function Step7({ f, addContact, removeContact, setContact, errors = {} }) {
               </div>
               <div>
                 {i === 0 && <div className="type-overline mb-1">Role</div>}
-                <Select options={PICKLISTS.wizardRole} placeholder="Select…" value={c.role} onChange={(e) => setContact(i, { role: e.target.value })} />
+                <Select options={picklistOptions(PICKLISTS.wizardRole)} placeholder="Select…" value={selectValue(c.role)} onChange={(e) => setContact(i, { role: e.target.value })} />
               </div>
               <div className="flex items-end justify-between gap-2">
                 <Checkbox label="Portal user" checked={c.portal} onChange={(e) => setContact(i, { portal: e.target.checked })} />
