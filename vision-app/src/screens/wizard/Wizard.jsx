@@ -611,7 +611,8 @@ export default function Wizard({ onClose, draftId = null }) {
   };
 
   const requestClose = () => {
-    setCancelOpen(true);
+    if (hasFormProgress(f, phase, step)) setCancelOpen(true);
+    else onClose();
   };
 
   const discardAndClose = () => {

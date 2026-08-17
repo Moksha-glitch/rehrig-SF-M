@@ -20,7 +20,9 @@ import { useDeleteDraft, useDrafts } from '../hooks/useOnboarding.js';
 import { getErrorMessage } from '../lib/errors.js';
 
 export default function AccountsList({ onOnboard }) {
-  const { navigate, canCreateAccounts, isScoped, toast, state, isFollowingAccount } = useStore();
+  const { navigate, canCreateAccounts, isScoped, toast, state, isFollowingAccount, assistantOpen } =
+    useStore();
+  const compact = assistantOpen;
   const accountsQuery = useAccounts();
   const draftsQuery = useDrafts();
   const deleteDraftMutation = useDeleteDraft();
@@ -112,39 +114,60 @@ export default function AccountsList({ onOnboard }) {
             </button>
           )}
         </Toolbar>
-        <Table columns={['#', 'Account Name', 'Industry', 'Phone', 'Owner', 'Residents', 'Status', '']}>
+        <Table
+          columns={[
+            '#',
+            'Account Name',
+            'Industry',
+            { label: 'Phone', className: compact ? 'hidden' : '' },
+            { label: 'Owner', className: compact ? 'hidden' : '' },
+            { label: 'Residents', className: compact ? 'hidden' : '' },
+            'Status',
+            '',
+          ]}
+        >
           {providerRows.map((a, i) => (
             <tr key={a.id} className="interactive hover:bg-elevated/70">
-              <td className="mono px-4 py-3 text-ink-faint tabular-nums">{i + 1}</td>
-              <td className="max-w-[14rem] px-4 py-3">
+              <td className="mono w-10 px-3 py-3 text-ink-faint tabular-nums sm:px-4">{i + 1}</td>
+              <td className="min-w-0 px-3 py-3 sm:px-4">
                 <button
                   type="button"
                   onClick={() => navigate('accountDetail', { accountId: a.id, tab: 'details' })}
-                  className="link-brand flex min-w-0 items-center gap-2 text-left"
+                  className="link-brand flex w-full min-w-0 flex-col items-start gap-1 text-left"
                 >
-                  <span className="truncate">{a.name}</span>
-                  {isFollowingAccount?.(a.id) && (
-                    <span title="Following" aria-label="Following">
-                      <Icon name="bookmark" size={12} className="text-brand" aria-hidden="true" />
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1">
+                  <span className="flex w-full min-w-0 items-center gap-1.5">
+                    <span className="truncate">{a.name}</span>
+                    {isFollowingAccount?.(a.id) && (
+                      <span title="Following" aria-label="Following">
+                        <Icon name="bookmark" size={12} className="shrink-0 text-brand" aria-hidden="true" />
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex flex-wrap gap-1">
                     <AccountBadges account={a} />
                   </span>
                 </button>
               </td>
-              <td className="px-4 py-3 text-ink-muted">{a.industry}</td>
-              <td className="mono px-4 py-3 text-ink-muted">{a.phone}</td>
-              <td className="px-4 py-3 text-ink-muted">{a.ownerName}</td>
-              <td className="mono px-4 py-3 text-ink-muted tabular-nums">{a.residents}</td>
-              <td className="px-4 py-3">
+              <td className="max-w-[8rem] truncate px-3 py-3 text-ink-muted sm:px-4">{a.industry}</td>
+              <td className={`mono px-3 py-3 text-ink-muted sm:px-4 ${compact ? 'hidden' : ''}`}>
+                {a.phone}
+              </td>
+              <td className={`truncate px-3 py-3 text-ink-muted sm:px-4 ${compact ? 'hidden' : ''}`}>
+                {a.ownerName}
+              </td>
+              <td
+                className={`mono px-3 py-3 text-ink-muted tabular-nums sm:px-4 ${compact ? 'hidden' : ''}`}
+              >
+                {a.residents}
+              </td>
+              <td className="whitespace-nowrap px-3 py-3 sm:px-4">
                 {a.inactive ? (
                   <StatusDot color="slate" label="Inactive" />
                 ) : (
                   <StatusDot color="emerald" label="Active" />
                 )}
               </td>
-              <td className="px-4 py-3 text-right">
+              <td className="px-3 py-3 text-right sm:px-4">
                 {canCreateAccounts && (
                   <button
                     type="button"
@@ -159,7 +182,7 @@ export default function AccountsList({ onOnboard }) {
           ))}
           {providerRows.length === 0 && (
             <tr>
-              <td colSpan={8} className="px-4 py-8 text-center text-sm text-ink-faint">
+              <td colSpan={compact ? 5 : 8} className="px-4 py-8 text-center text-sm text-ink-faint">
                 {q || status !== 'All' ? 'No service providers match these filters.' : 'No service providers are available in your scope.'}
               </td>
             </tr>
@@ -178,23 +201,35 @@ export default function AccountsList({ onOnboard }) {
               Saved from onboarding · resume anytime
             </span>
           </div>
-          <Table columns={['#', 'Draft name', 'Industry', 'Last saved', 'Owner', '', 'Status']}>
+          <Table
+            columns={[
+              '#',
+              'Draft name',
+              'Industry',
+              { label: 'Last saved', className: compact ? 'hidden' : '' },
+              { label: 'Owner', className: compact ? 'hidden' : '' },
+              '',
+              'Status',
+            ]}
+          >
             {drafts.map((d, i) => (
               <tr key={d.id} className="interactive hover:bg-elevated/70">
-                <td className="mono px-4 py-3 text-ink-faint tabular-nums">
+                <td className="mono w-10 px-3 py-3 text-ink-faint tabular-nums sm:px-4">
                   {providerRows.length + i + 1}
                 </td>
-                <td className="px-4 py-3">
+                <td className="min-w-0 truncate px-3 py-3 sm:px-4">
                   <button
                     type="button"
                     onClick={() => onOnboard?.(d.id)}
-                    className="link-brand text-left font-medium"
+                    className="link-brand max-w-full truncate text-left font-medium"
                   >
                     {d.name || 'Untitled draft'}
                   </button>
                 </td>
-                <td className="px-4 py-3 text-ink-muted">{d.industry || '—'}</td>
-                <td className="mono px-4 py-3 text-ink-muted">
+                <td className="max-w-[8rem] truncate px-3 py-3 text-ink-muted sm:px-4">
+                  {d.industry || '—'}
+                </td>
+                <td className={`mono px-3 py-3 text-ink-muted sm:px-4 ${compact ? 'hidden' : ''}`}>
                   {d.updatedAt
                     ? new Date(d.updatedAt).toLocaleString(undefined, {
                         month: 'short',
@@ -204,7 +239,9 @@ export default function AccountsList({ onOnboard }) {
                       })
                     : '—'}
                 </td>
-                <td className="px-4 py-3 text-ink-muted">{d.ownerName || '—'}</td>
+                <td className={`truncate px-3 py-3 text-ink-muted sm:px-4 ${compact ? 'hidden' : ''}`}>
+                  {d.ownerName || '—'}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Button variant="secondary" className="!px-2.5 !py-1.5 text-xs" onClick={() => onOnboard?.(d.id)}>

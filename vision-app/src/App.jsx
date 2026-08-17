@@ -20,6 +20,7 @@ import Setup from './screens/Setup.jsx';
 import ProfileManagement from './screens/ProfileManagement.jsx';
 import { GenericList } from './screens/RecordScreens.jsx';
 import ContactsDirectory from './screens/ContactsDirectory.jsx';
+import CustomersDirectory from './screens/CustomersDirectory.jsx';
 import MapCenter from './screens/MapCenter.jsx';
 import BulkImport from './screens/BulkImport.jsx';
 import ContractOnboarding from './screens/ContractOnboarding.jsx';
@@ -51,6 +52,7 @@ function Router({ onOnboard }) {
     accountDetail: 'accounts',
     account: 'account',
     contacts: 'contacts',
+    customers: 'customers',
     serviceTypes: 'serviceTypes',
     locationTypes: 'locationTypes',
     assetTypes: 'assetTypes',
@@ -105,6 +107,8 @@ function Router({ onOnboard }) {
     }
     case 'contacts':
       return <ContactsDirectory />;
+    case 'customers':
+      return <CustomersDirectory />;
     case 'serviceTypes':
       return <MasterConfig configKey="serviceTypes" />;
     case 'locationTypes':

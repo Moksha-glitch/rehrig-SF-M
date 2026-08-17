@@ -4,13 +4,13 @@ export const NAV = {
   rehrig: [
     { type: 'item', key: 'assistant', module: 'assistant', label: 'AI Assistant', icon: 'star' },
     { type: 'item', key: 'home', module: 'home', label: 'Home', icon: 'home' },
-    { type: 'item', key: 'contacts', module: 'contacts', label: 'Contacts', icon: 'user' },
     {
       type: 'section',
       label: 'Service Providers',
       icon: 'building',
       children: [
         { key: 'accounts', module: 'accounts', label: 'All Providers', icon: 'building' },
+        { key: 'contacts', module: 'contacts', label: 'Contacts', icon: 'user' },
         {
           key: 'contractOnboarding',
           module: 'contractOnboarding',
@@ -299,6 +299,7 @@ export const MODULE_LABELS = {
   accountDetail: 'Service Provider',
   account: 'My Service Provider',
   contacts: 'Contacts',
+  customers: 'Customers',
   serviceTypes: 'Service Types',
   locationTypes: 'Location Types',
   assetTypes: 'Asset Types',

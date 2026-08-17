@@ -11,6 +11,7 @@ import {
 } from '../data/assistantIntents.js';
 
 const HISTORY_KEY = 'vision.ui.chatHistory';
+const FAVS_KEY = 'vision.ui.chatFavorites';
 
 const PAGE_PROMPTS = {
   apiIntegrations: {
@@ -63,6 +64,24 @@ function writeHistory(threads) {
   }
 }
 
+function readFavorites() {
+  try {
+    const raw = window.localStorage.getItem(FAVS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeFavorites(threads) {
+  try {
+    window.localStorage.setItem(FAVS_KEY, JSON.stringify(threads.slice(0, 12)));
+  } catch {
+    /* ignore quota / private-mode failures */
+  }
+}
+
 function titleFromMessages(messages) {
   const first = messages.find((message) => message.role === 'user');
   return first?.text?.slice(0, 42) || 'New chat';
@@ -84,7 +103,9 @@ export default function VisionChat({ onOnboard, onClose }) {
   const [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState(readHistory);
+  const [favorites, setFavorites] = useState(readFavorites);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [favsOpen, setFavsOpen] = useState(false);
   const inputRef = useRef(null);
   const timerRef = useRef(null);
   const messageId = useRef(0);
@@ -172,23 +193,40 @@ export default function VisionChat({ onOnboard, onClose }) {
     }, 450);
   };
 
+  const currentTitle = titleFromMessages(messages);
+  const currentIsFavorite = messages.length > 0 && favorites.some((item) => item.title === currentTitle);
+
+  const toggleFavorite = (thread) => {
+    if (!thread?.title) return;
+    setFavorites((prev) => {
+      const exists = prev.some((item) => item.title === thread.title);
+      const next = exists
+        ? prev.filter((item) => item.title !== thread.title)
+        : [{ ...thread, id: thread.id || `fav-${Date.now().toString(36)}` }, ...prev].slice(0, 12);
+      writeFavorites(next);
+      return next;
+    });
+  };
+
   const newChat = () => {
     window.clearTimeout(timerRef.current);
     setMessages([]);
     setBusy(false);
     setDraft('');
     setHistoryOpen(false);
+    setFavsOpen(false);
     window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
   };
 
   const openThread = (thread) => {
     setMessages(thread.messages || []);
     setHistoryOpen(false);
+    setFavsOpen(false);
   };
 
   return (
     <aside
-      className="fixed inset-0 z-40 flex h-full min-h-0 w-full flex-col border-r border-line bg-surface lg:static lg:z-auto lg:w-[32rem] lg:shrink-0"
+      className="fixed inset-0 z-40 flex h-full min-h-0 w-full flex-col border-r border-line bg-surface lg:static lg:z-auto lg:w-[30rem] lg:shrink-0"
       aria-label="Vision AI"
     >
       <div className="flex h-12 shrink-0 items-center justify-between gap-2 px-3">
@@ -211,7 +249,85 @@ export default function VisionChat({ onOnboard, onClose }) {
           <div className="relative">
             <button
               type="button"
-              onClick={() => setHistoryOpen((open) => !open)}
+              onClick={() => {
+                setHistoryOpen(false);
+                setFavsOpen((open) => !open);
+              }}
+              className={`relative rounded-lg p-1.5 hover:bg-elevated ${
+                favsOpen || currentIsFavorite ? 'text-brand' : 'text-ink-muted hover:text-ink'
+              }`}
+              aria-label="Favorite chats"
+              aria-expanded={favsOpen}
+              title="Favorites"
+            >
+              <Icon name="star" size={16} />
+              {favorites.length > 0 && (
+                <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-brand" />
+              )}
+            </button>
+            {favsOpen && (
+              <div className="absolute right-0 z-20 mt-1 w-64 rounded-panel border border-line bg-surface p-1.5 shadow-float">
+                <div className="px-2.5 pb-1 pt-1.5 type-overline">Favorites</div>
+                {messages.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      toggleFavorite({
+                        id: `fav-${Date.now().toString(36)}`,
+                        title: currentTitle,
+                        messages,
+                        page: pageLabel,
+                      })
+                    }
+                    className="mb-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left hover:bg-elevated"
+                  >
+                    <Icon
+                      name="star"
+                      size={13}
+                      className={currentIsFavorite ? 'text-brand' : 'text-ink-faint'}
+                    />
+                    <span className="text-xs font-medium text-ink">
+                      {currentIsFavorite ? 'Remove current chat' : 'Save current chat'}
+                    </span>
+                  </button>
+                )}
+                {favorites.length ? (
+                  favorites.map((thread) => (
+                    <div key={thread.id} className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openThread(thread)}
+                        className="min-w-0 flex-1 rounded-lg px-2.5 py-2 text-left hover:bg-elevated"
+                      >
+                        <div className="truncate text-xs font-medium text-ink">{thread.title}</div>
+                        <div className="truncate text-[10px] text-ink-faint">{thread.page}</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleFavorite(thread)}
+                        className="rounded-lg p-1.5 text-brand hover:bg-elevated"
+                        aria-label={`Remove ${thread.title} from favorites`}
+                        title="Remove"
+                      >
+                        <Icon name="star" size={13} />
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-2.5 py-3 text-xs text-ink-muted">
+                    No favorite chats yet. Save one from this menu.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setFavsOpen(false);
+                setHistoryOpen((open) => !open);
+              }}
               className="relative rounded-lg p-1.5 text-ink-muted hover:bg-elevated hover:text-ink"
               aria-label="Chat history"
               aria-expanded={historyOpen}
@@ -226,15 +342,29 @@ export default function VisionChat({ onOnboard, onClose }) {
               <div className="absolute right-0 z-20 mt-1 w-64 rounded-panel border border-line bg-surface p-1.5 shadow-float">
                 {history.length ? (
                   history.map((thread) => (
-                    <button
-                      key={thread.id}
-                      type="button"
-                      onClick={() => openThread(thread)}
-                      className="block w-full rounded-lg px-2.5 py-2 text-left hover:bg-elevated"
-                    >
-                      <div className="truncate text-xs font-medium text-ink">{thread.title}</div>
-                      <div className="truncate text-[10px] text-ink-faint">{thread.page}</div>
-                    </button>
+                    <div key={thread.id} className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openThread(thread)}
+                        className="min-w-0 flex-1 rounded-lg px-2.5 py-2 text-left hover:bg-elevated"
+                      >
+                        <div className="truncate text-xs font-medium text-ink">{thread.title}</div>
+                        <div className="truncate text-[10px] text-ink-faint">{thread.page}</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleFavorite(thread)}
+                        className={`rounded-lg p-1.5 hover:bg-elevated ${
+                          favorites.some((item) => item.title === thread.title)
+                            ? 'text-brand'
+                            : 'text-ink-faint'
+                        }`}
+                        aria-label={`Favorite ${thread.title}`}
+                        title="Favorite"
+                      >
+                        <Icon name="star" size={13} />
+                      </button>
+                    </div>
                   ))
                 ) : (
                   <div className="px-2.5 py-3 text-xs text-ink-muted">No earlier chats yet.</div>

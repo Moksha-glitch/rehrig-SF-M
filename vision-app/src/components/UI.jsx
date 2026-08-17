@@ -6,7 +6,7 @@ import Icon from './Icon.jsx';
 export function Page({ children, wide = false, className = '' }) {
   return (
     <div
-      className={`mx-auto min-w-0 animate-fade-up px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 ${wide ? 'max-w-7xl' : 'max-w-6xl'} ${className}`}
+      className={`mx-auto min-w-0 w-full animate-fade-up px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 ${className}`}
     >
       {children}
     </div>
@@ -38,7 +38,7 @@ export function PageHeader({ overline, title, description, actions, meta, titleE
 export function Panel({ children, className = '', padded = false, hover = false }) {
   return (
     <div
-      className={`surface-panel ${hover ? 'surface-panel-hover' : ''} ${padded ? 'p-5 sm:p-6' : ''} ${className}`}
+      className={`surface-panel min-w-0 ${hover ? 'surface-panel-hover' : ''} ${padded ? 'p-5 sm:p-6' : ''} ${className}`}
     >
       {children}
     </div>
@@ -407,20 +407,27 @@ export function Tabs({ items, value, onChange, label = 'Sections', className = '
 
 export function Table({ columns, children, className = '', caption, label }) {
   return (
-    <div className={`overflow-x-auto scroll-thin ${className}`}>
-      <table className="w-full min-w-max text-left text-sm" aria-label={caption ? undefined : label}>
+    <div className={`min-w-0 overflow-x-auto scroll-thin ${className}`}>
+      <table
+        className="w-full text-left text-sm [&_td]:overflow-hidden [&_th]:overflow-hidden"
+        aria-label={caption ? undefined : label}
+      >
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead>
           <tr className="border-b border-line bg-elevated/30">
-            {columns.map((c, i) => (
-              <th
-                key={typeof c === 'object' ? c.key || c.label : `${c}-${i}`}
-                scope="col"
-                className="type-overline px-4 py-3.5 font-semibold sm:px-5"
-              >
-                {typeof c === 'object' ? c.label : c}
-              </th>
-            ))}
+            {columns.map((c, i) => {
+              const text = typeof c === 'object' ? c.label : c;
+              const extra = typeof c === 'object' ? c.className || '' : '';
+              return (
+                <th
+                  key={typeof c === 'object' ? c.key || c.label || i : `${c}-${i}`}
+                  scope="col"
+                  className={`type-overline px-3 py-3 font-semibold sm:px-4 ${extra}`}
+                >
+                  {text}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody className="divide-y divide-line">{children}</tbody>

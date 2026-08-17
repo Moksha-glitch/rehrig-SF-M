@@ -105,6 +105,7 @@ export const ROLE_MODULES = {
     'accounts',
     'accountDetail',
     'contacts',
+    'customers',
     'serviceTypes',
     'locationTypes',
     'assetTypes',
