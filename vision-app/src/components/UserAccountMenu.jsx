@@ -29,17 +29,20 @@ export default function UserAccountMenu({
           </div>
         )}
       </div>
-      {persona === 'rehrig' && (
+      {(persona === 'rehrig' || persona === 'sp' || persona === 'customer') && (
         <button
           type="button"
           role="menuitem"
           onClick={() => {
-            navigate('setup', { section: 'account' });
+            if (persona === 'rehrig') navigate('setup', { section: 'account' });
+            else if (persona === 'sp') navigate('account', { tab: 'details' });
+            else navigate('myAccount');
             onClose();
           }}
-          className="mt-1 flex w-full rounded-control px-3 py-2 text-left text-sm text-ink-muted interactive hover:bg-elevated hover:text-ink"
+          className="mt-1 flex w-full items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-ink-muted interactive hover:bg-elevated hover:text-ink"
         >
-          Your Account
+          <Icon name="users" size={14} />
+          {persona === 'customer' ? 'My Account' : 'Your Account'}
         </button>
       )}
       {canPreviewPersonas && (

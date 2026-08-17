@@ -4,7 +4,6 @@ export const NAV = {
   rehrig: [
     { type: 'item', key: 'assistant', module: 'assistant', label: 'Vision AI', icon: 'star' },
     { type: 'item', key: 'home', module: 'home', label: 'Home', icon: 'home' },
-    { type: 'item', key: 'notifications', module: 'notifications', label: 'Notifications', icon: 'bell' },
     {
       type: 'section',
       label: 'Service Providers',
@@ -72,18 +71,11 @@ export const NAV = {
         },
       ],
     },
+    { type: 'item', key: 'notifications', module: 'notifications', label: 'Notifications', icon: 'bell' },
   ],
   sp: [
-    { type: 'item', key: 'notifications', module: 'notifications', label: 'Notifications', icon: 'bell' },
-    {
-      type: 'section',
-      label: 'Overview',
-      icon: 'home',
-      children: [
-        { key: 'assistant', module: 'assistant', label: 'Vision AI', icon: 'star' },
-        { key: 'home', module: 'home', label: 'Home', icon: 'home' },
-      ],
-    },
+    { type: 'item', key: 'assistant', module: 'assistant', label: 'Vision AI', icon: 'star' },
+    { type: 'item', key: 'home', module: 'home', label: 'Home', icon: 'home' },
     {
       type: 'section',
       label: 'Service Provider',
@@ -271,6 +263,7 @@ export const NAV = {
         },
       ],
     },
+    { type: 'item', key: 'notifications', module: 'notifications', label: 'Notifications', icon: 'bell' },
   ],
   customer: [
     { type: 'item', key: 'assistant', module: 'assistant', label: 'Vision AI', icon: 'star' },
@@ -290,7 +283,6 @@ export const NAV = {
       label: 'Notifications',
       icon: 'bell',
     },
-    { type: 'item', key: 'myAccount', module: 'myAccount', label: 'My Account', icon: 'users' },
   ],
 };
 

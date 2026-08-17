@@ -274,20 +274,22 @@ export default function SideNav({ open, onToggle }) {
         </div>
 
         <nav
-          className={`min-h-0 flex-1 overflow-y-auto pb-3 scroll-thin ${
-            open ? 'space-y-0.5 px-2.5' : 'flex flex-col items-center gap-1 px-1.5'
+          className={`flex min-h-0 flex-1 flex-col overflow-y-auto pb-3 scroll-thin ${
+            open ? 'space-y-0.5 px-2.5' : 'items-center gap-1 px-1.5'
           }`}
         >
           {tree.map((node) => {
+            const pinBottom = node.module === 'notifications' || node.module === 'myNotifications';
             if (node.type === 'item') {
               return (
-                <NavButton
-                  key={node.key}
-                  item={node}
-                  active={isItemActive(node)}
-                  collapsed={!open}
-                  onClick={() => goTo(node)}
-                />
+                <div key={node.key} className={pinBottom ? 'mt-auto pt-2' : undefined}>
+                  <NavButton
+                    item={node}
+                    active={isItemActive(node)}
+                    collapsed={!open}
+                    onClick={() => goTo(node)}
+                  />
+                </div>
               );
             }
 

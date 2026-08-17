@@ -299,7 +299,25 @@ export default function CustomerHome({ view }) {
 
   if (view === 'myWorkOrders') {
     return (
-      <Shell overline="Resident" title="My Work Orders" subtitle="Service requests for your locations.">
+      <Shell
+        overline="Resident"
+        title="My Work Orders"
+        subtitle="Service requests for your locations."
+        actions={
+          <Button
+            variant="primary"
+            onClick={() => {
+              if (!user?.customerId || !account?.id) {
+                toast?.('A customer account is required to submit a service request', 'error');
+                return;
+              }
+              setRequestOpen(true);
+            }}
+          >
+            <Icon name="plus" size={16} /> Request service
+          </Button>
+        }
+      >
         <AsyncState
           loading={workOrdersQuery.isLoading}
           error={workOrdersQuery.isError ? getErrorMessage(workOrdersQuery.error) : null}
@@ -326,20 +344,6 @@ export default function CustomerHome({ view }) {
                 </tr>
               )}
             </Table>
-            <div className="border-t border-line p-4">
-              <Button
-                variant="primary"
-                onClick={() => {
-                  if (!user?.customerId || !account?.id) {
-                    toast?.('A customer account is required to submit a service request', 'error');
-                    return;
-                  }
-                  setRequestOpen(true);
-                }}
-              >
-                <Icon name="plus" size={15} /> Request service
-              </Button>
-            </div>
           </Panel>
         </AsyncState>
         {requestOpen && (
@@ -478,10 +482,10 @@ function LocationsContent({ locations, loading, error, onRetry }) {
   );
 }
 
-function Shell({ overline, title, subtitle, children }) {
+function Shell({ overline, title, subtitle, actions, children }) {
   return (
     <Page>
-      <PageHeader overline={overline} title={title} description={subtitle} />
+      <PageHeader overline={overline} title={title} description={subtitle} actions={actions} />
       {children}
     </Page>
   );

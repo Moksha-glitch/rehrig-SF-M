@@ -227,17 +227,6 @@ export default function AccountDetail({ accountId, tab }) {
         }
         actions={
           <>
-            {canCreateAccounts && (
-              <Button variant="primary" onClick={() => setEditOpen(true)}>
-                <Icon name="edit" size={15} /> Edit provider
-              </Button>
-            )}
-            {canCreateAccounts && (
-              <Button variant="secondary" onClick={() => setStatusConfirm(true)}>
-                <Icon name={account.inactive ? 'checkCircle' : 'x'} size={15} />{' '}
-                {account.inactive ? 'Re-activate' : 'Deactivate'}
-              </Button>
-            )}
             <Button
               variant="secondary"
               onClick={() => {
@@ -253,6 +242,17 @@ export default function AccountDetail({ accountId, tab }) {
             <Button variant="secondary" className="hidden md:inline-flex" onClick={() => setTab('routes')}>
               View routes <Icon name="chevronRight" size={14} />
             </Button>
+            {canCreateAccounts && (
+              <Button variant="secondary" onClick={() => setStatusConfirm(true)}>
+                <Icon name={account.inactive ? 'checkCircle' : 'x'} size={15} />{' '}
+                {account.inactive ? 'Re-activate' : 'Deactivate'}
+              </Button>
+            )}
+            {canCreateAccounts && (
+              <Button variant="primary" onClick={() => setEditOpen(true)}>
+                <Icon name="edit" size={15} /> Edit provider
+              </Button>
+            )}
           </>
         }
       />
@@ -638,8 +638,8 @@ function ContactsTab({ accountId, contacts, canEdit, onChanged }) {
       <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
         <p className="text-sm text-ink-muted">{contacts.length} contact{contacts.length === 1 ? '' : 's'}</p>
         {canEdit && (
-          <Button variant="secondary" className="!px-2.5 !py-1.5 text-xs" onClick={() => setCreating(true)}>
-            <Icon name="plus" size={14} /> Add contact
+          <Button variant="secondary" onClick={() => setCreating(true)}>
+            <Icon name="plus" size={16} /> Add contact
           </Button>
         )}
       </div>

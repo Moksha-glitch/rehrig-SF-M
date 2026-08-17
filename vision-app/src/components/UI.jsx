@@ -28,7 +28,11 @@ export function PageHeader({ overline, title, description, actions, meta, titleE
           )}
           {meta && <div className="mt-2 text-sm text-ink-muted">{meta}</div>}
         </div>
-        {actions && <div className="flex max-w-full flex-wrap items-center gap-2 sm:shrink-0">{actions}</div>}
+        {actions && (
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 sm:shrink-0">
+            {actions}
+          </div>
+        )}
       </div>
       <div className="hairline-rule mt-7 animate-rule-draw" />
     </header>

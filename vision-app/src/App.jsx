@@ -191,7 +191,7 @@ function Router({ onOnboard }) {
 }
 
 export default function App() {
-  const { state, navigate, assistantOpen, closeAssistant } = useStore();
+  const { state, navigate, assistantOpen, openAssistant, closeAssistant } = useStore();
   const { bootstrapping } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
 
@@ -204,13 +204,26 @@ export default function App() {
   }, [sidebarOpen]);
 
   const prevModuleRef = useRef(state.nav.module);
+  const wasLoggedIn = useRef(false);
 
   useEffect(() => {
+    if (!state.currentUser) {
+      wasLoggedIn.current = false;
+      return;
+    }
+
+    const loggedInNow = !wasLoggedIn.current;
+    wasLoggedIn.current = true;
+
     const previous = prevModuleRef.current;
     prevModuleRef.current = state.nav.module;
 
+    if (loggedInNow) {
+      openAssistant();
+      return;
+    }
     if (previous !== state.nav.module) closeAssistant();
-  }, [state.nav.module, closeAssistant]);
+  }, [state.currentUser, state.nav.module, openAssistant, closeAssistant]);
 
   const toggleSidebar = () => setSidebarOpen((open) => !open);
 

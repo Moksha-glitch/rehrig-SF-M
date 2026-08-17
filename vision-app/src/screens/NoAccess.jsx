@@ -26,10 +26,12 @@ export default function NoAccess() {
           your administrator and include the page name above.
         </p>
         <div className="mt-8 flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => window.history.back()}>
+            Go back
+          </Button>
           <Button variant="primary" onClick={() => navigate(home)}>
             <Icon name="home" size={15} /> Back to home
           </Button>
-          <Button variant="secondary" onClick={() => window.history.back()}>Go back</Button>
         </div>
       </div>
     </Page>

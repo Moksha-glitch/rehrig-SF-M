@@ -35,7 +35,13 @@ function homeModuleFor() {
 function reducer(state, action) {
   switch (action.type) {
     case 'LOGIN':
-      return { ...state, currentUser: action.user, previewOriginUserId: null, nav: action.nav };
+      return {
+        ...state,
+        currentUser: action.user,
+        previewOriginUserId: null,
+        nav: action.nav,
+        assistantOpen: true,
+      };
     case 'LOGOUT':
       return {
         ...state,
