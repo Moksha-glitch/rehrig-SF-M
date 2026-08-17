@@ -513,7 +513,7 @@ export function Dialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 animate-fade-in">
       <button
         type="button"
-        className="absolute inset-0 cursor-default bg-ink/45 backdrop-blur-[3px]"
+        className="overlay-scrim absolute inset-0 cursor-default"
         onClick={onClose}
         aria-label="Close dialog"
         tabIndex={-1}
@@ -649,7 +649,7 @@ export function Drawer({
     <div className="fixed inset-0 z-50 flex justify-end animate-fade-in">
       <button
         type="button"
-        className="absolute inset-0 cursor-default bg-ink/45 backdrop-blur-[3px]"
+        className="overlay-scrim absolute inset-0 cursor-default"
         onClick={onClose}
         aria-label="Close drawer"
         tabIndex={-1}

@@ -8,6 +8,7 @@ export const NAV = {
     {
       type: 'section',
       label: 'Service Providers',
+      icon: 'building',
       children: [
         { key: 'accounts', module: 'accounts', label: 'All Providers', icon: 'building' },
         {
@@ -21,6 +22,7 @@ export const NAV = {
     {
       type: 'section',
       label: 'Configure',
+      icon: 'settings',
       children: [
         {
           key: 'profileMgmtNav',
@@ -45,6 +47,7 @@ export const NAV = {
     {
       type: 'section',
       label: 'Analytics',
+      icon: 'barChart',
       children: [
         {
           key: 'reports',
@@ -73,6 +76,7 @@ export const NAV = {
     {
       type: 'section',
       label: 'Overview',
+      icon: 'home',
       children: [
         { key: 'assistant', module: 'assistant', label: 'AI Assistant', icon: 'star' },
         { key: 'home', module: 'home', label: 'Home', icon: 'home' },
@@ -81,6 +85,7 @@ export const NAV = {
     {
       type: 'section',
       label: 'Service Provider',
+      icon: 'building',
       children: [
         {
           key: 'details',
@@ -144,6 +149,7 @@ export const NAV = {
     {
       type: 'section',
       label: 'Assets & Products',
+      icon: 'box',
       children: [
         { key: 'r-assets', module: 'assets', label: 'Assets', icon: 'box' },
         {
@@ -164,6 +170,7 @@ export const NAV = {
     {
       type: 'section',
       label: 'Operations',
+      icon: 'clipboard',
       children: [
         { key: 'r-workOrders', module: 'workOrders', label: 'Work Orders', icon: 'clipboard' },
         { key: 'r-dispatches', module: 'dispatches', label: 'Dispatches', icon: 'send' },
@@ -192,6 +199,7 @@ export const NAV = {
     {
       type: 'section',
       label: 'Telematics',
+      icon: 'truck',
       children: [
         {
           key: 'r-indTips',
@@ -211,6 +219,7 @@ export const NAV = {
     {
       type: 'section',
       label: 'Analytics',
+      icon: 'barChart',
       children: [
         {
           key: 'reports',
@@ -237,6 +246,7 @@ export const NAV = {
     {
       type: 'section',
       label: 'Configure',
+      icon: 'settings',
       children: [
         {
           key: 'r-requestTypes',

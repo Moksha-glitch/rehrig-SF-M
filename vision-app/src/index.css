@@ -316,6 +316,13 @@ a {
   border-color: var(--color-line);
 }
 
+/* Dim + blur the page behind dialogs, drawers, and other popups */
+.overlay-scrim {
+  background: rgba(12, 18, 25, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
 .floating-3d-shield {
   box-sizing: border-box;
   display: flex;

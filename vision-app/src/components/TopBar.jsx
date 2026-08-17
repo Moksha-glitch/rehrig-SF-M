@@ -139,7 +139,7 @@ export default function TopBar() {
         <>
           <button
             type="button"
-            className="fixed inset-0 z-40 bg-ink/45 backdrop-blur-[2px] lg:hidden"
+            className="overlay-scrim fixed inset-0 z-40 lg:hidden"
             onClick={() => setMobileOpen(false)}
             aria-label="Close navigation"
           />

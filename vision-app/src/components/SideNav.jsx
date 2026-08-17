@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import UserAccountMenu from './UserAccountMenu.jsx';
 import { useStore } from '../state/AppStore.jsx';
@@ -50,6 +51,115 @@ function NavButton({ item, active, onClick, collapsed }) {
   );
 }
 
+function FolderFlyout({ anchorEl, section, isItemActive, onSelect }) {
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useLayoutEffect(() => {
+    if (!anchorEl) return undefined;
+    const place = () => {
+      const rect = anchorEl.getBoundingClientRect();
+      const width = 220;
+      const estimatedHeight = 16 + section.children.length * 40;
+      const top = Math.min(rect.top, window.innerHeight - estimatedHeight - 12);
+      setPos({
+        top: Math.max(12, top),
+        left: Math.min(rect.right + 6, window.innerWidth - width - 12),
+      });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [anchorEl, section.children.length]);
+
+  return createPortal(
+    <div
+      role="menu"
+      aria-label={section.label}
+      style={{ top: pos.top, left: pos.left }}
+      className="fixed z-[60] min-w-[13.5rem] rounded-2xl border border-line bg-elevated p-1.5 shadow-float"
+    >
+      {section.children.map((item) => {
+        const active = isItemActive(item);
+        return (
+          <button
+            key={item.key}
+            type="button"
+            role="menuitem"
+            onClick={() => onSelect(item)}
+            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13.5px] interactive ${
+              active ? 'bg-surface text-ink' : 'text-ink-muted hover:bg-surface hover:text-ink'
+            }`}
+          >
+            {item.icon ? (
+              <Icon
+                name={item.icon}
+                size={16}
+                className={`shrink-0 ${active ? 'text-ink' : 'text-ink-faint'}`}
+              />
+            ) : (
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[10px] font-semibold">
+                {item.label.charAt(0)}
+              </span>
+            )}
+            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+          </button>
+        );
+      })}
+    </div>,
+    document.body
+  );
+}
+
+function FolderButton({ section, collapsed, open, active, onToggle, isItemActive, onSelect }) {
+  const buttonRef = useRef(null);
+
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        type="button"
+        title={section.label}
+        aria-label={section.label}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={onToggle}
+        className={
+          collapsed
+            ? `flex h-10 w-10 items-center justify-center rounded-xl ${
+                open || active
+                  ? 'bg-surface text-ink'
+                  : 'text-ink-muted hover:bg-surface hover:text-ink'
+              }`
+            : `nav-item flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13.5px] ${
+                open || active
+                  ? 'nav-item-active text-ink'
+                  : 'text-ink-muted hover:bg-surface hover:text-ink'
+              }`
+        }
+      >
+        <Icon
+          name={section.icon || section.children?.[0]?.icon || 'grid'}
+          size={collapsed ? 18 : 16}
+          className={`shrink-0 ${open || active ? 'text-ink' : 'text-ink-faint'}`}
+        />
+        {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{section.label}</span>}
+      </button>
+      {open && (
+        <FolderFlyout
+          anchorEl={buttonRef.current}
+          section={section}
+          isItemActive={isItemActive}
+          onSelect={onSelect}
+        />
+      )}
+    </div>
+  );
+}
+
 export default function SideNav({ open, onToggle }) {
   const {
     state,
@@ -70,23 +180,14 @@ export default function SideNav({ open, onToggle }) {
   const accountsQuery = useAccounts();
   const user = state.currentUser;
   const [accountOpen, setAccountOpen] = useState(false);
+  const [openFolder, setOpenFolder] = useState(null);
   const accountRef = useRef(null);
+  const shellRef = useRef(null);
 
   const tree = useMemo(() => filterNavTree(NAV[persona] || [], canNav), [persona, canNav]);
 
   const activeModule = state.nav.module;
   const activeParams = state.nav.params || {};
-
-  const activeSection = useMemo(() => {
-    const match = tree.find(
-      (node) =>
-        node.type === 'section' &&
-        node.children.some((item) => isNavItemActive(item, activeModule, activeParams))
-    );
-    return match?.label || null;
-  }, [tree, activeModule, activeParams]);
-
-  const [collapsedSections, setCollapsedSections] = useState({});
 
   const accounts = accountsQuery.data || [];
   const scopedAccount =
@@ -98,9 +199,15 @@ export default function SideNav({ open, onToggle }) {
   useEffect(() => {
     const onPointerDown = (event) => {
       if (!accountRef.current?.contains(event.target)) setAccountOpen(false);
+      const inShell = shellRef.current?.contains(event.target);
+      const inFlyout = event.target.closest?.('[role="menu"]');
+      if (!inShell && !inFlyout) setOpenFolder(null);
     };
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') setAccountOpen(false);
+      if (event.key === 'Escape') {
+        setAccountOpen(false);
+        setOpenFolder(null);
+      }
     };
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -116,6 +223,7 @@ export default function SideNav({ open, onToggle }) {
     persona === 'rehrig' ? 'Rehrig' : persona === 'sp' ? 'Service Provider' : 'Resident';
 
   const goTo = (item) => {
+    setOpenFolder(null);
     if (item.module === 'assistant') {
       openAssistant();
       return;
@@ -129,7 +237,7 @@ export default function SideNav({ open, onToggle }) {
       : isNavItemActive(item, activeModule, activeParams);
 
   return (
-    <div className={`side-nav hidden lg:block ${open ? 'w-[16.5rem]' : 'w-14'}`}>
+    <div ref={shellRef} className={`side-nav hidden lg:block ${open ? 'w-[16.5rem]' : 'w-14'}`}>
       <aside
         className="flex h-full w-full flex-col border-r border-line bg-elevated/70"
         aria-label="Main navigation"
@@ -166,8 +274,8 @@ export default function SideNav({ open, onToggle }) {
         </div>
 
         <nav
-          className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-3 scroll-thin ${
-            open ? 'space-y-0.5 px-2.5' : 'flex flex-col items-center gap-0.5 px-1.5'
+          className={`min-h-0 flex-1 overflow-y-auto pb-3 scroll-thin ${
+            open ? 'space-y-0.5 px-2.5' : 'flex flex-col items-center gap-1 px-1.5'
           }`}
         >
           {tree.map((node) => {
@@ -183,59 +291,21 @@ export default function SideNav({ open, onToggle }) {
               );
             }
 
-            const expanded =
-              collapsedSections[node.label] === undefined
-                ? activeSection === node.label
-                : !collapsedSections[node.label];
-
-            if (!open) {
-              return (
-                <div
-                  key={node.label}
-                  className="flex flex-col items-center gap-0.5 border-t border-line/70 pt-1.5 first:border-t-0 first:pt-0"
-                >
-                  {node.children.map((item) => (
-                    <NavButton
-                      key={item.key}
-                      item={item}
-                      active={isItemActive(item)}
-                      collapsed
-                      onClick={() => goTo(item)}
-                    />
-                  ))}
-                </div>
-              );
-            }
-
+            const sectionActive = node.children.some((item) => isItemActive(item));
             return (
-              <div key={node.label} className="pt-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCollapsedSections((prev) => ({
-                      ...prev,
-                      [node.label]: expanded,
-                    }))
-                  }
-                  aria-expanded={expanded}
-                  className="mb-1 flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint interactive hover:bg-surface hover:text-ink-muted"
-                >
-                  <span>{node.label}</span>
-                  <Icon name={expanded ? 'chevronDown' : 'chevronRight'} size={12} />
-                </button>
-                {expanded && (
-                  <div className="space-y-0.5">
-                    {node.children.map((item) => (
-                      <NavButton
-                        key={item.key}
-                        item={item}
-                        active={isItemActive(item)}
-                        onClick={() => goTo(item)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+              <FolderButton
+                key={node.label}
+                section={node}
+                collapsed={!open}
+                open={openFolder === node.label}
+                active={sectionActive}
+                onToggle={() => {
+                  setAccountOpen(false);
+                  setOpenFolder((current) => (current === node.label ? null : node.label));
+                }}
+                isItemActive={isItemActive}
+                onSelect={goTo}
+              />
             );
           })}
         </nav>
@@ -247,7 +317,10 @@ export default function SideNav({ open, onToggle }) {
           <div ref={accountRef} className="relative">
             <button
               type="button"
-              onClick={() => setAccountOpen((openMenu) => !openMenu)}
+              onClick={() => {
+                setOpenFolder(null);
+                setAccountOpen((openMenu) => !openMenu);
+              }}
               className={
                 open
                   ? `flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left interactive hover:bg-surface ${
@@ -263,9 +336,9 @@ export default function SideNav({ open, onToggle }) {
               aria-haspopup="menu"
             >
               <span
-                className={`flex shrink-0 items-center justify-center rounded-lg text-[10px] font-semibold text-white ${
-                  open ? 'h-8 w-8' : 'h-8 w-8'
-                } ${isPreviewingPersona ? 'bg-warn' : 'bg-ink'}`}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-semibold text-white ${
+                  isPreviewingPersona ? 'bg-warn' : 'bg-ink'
+                }`}
               >
                 {initials(user?.name)}
               </span>

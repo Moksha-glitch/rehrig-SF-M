@@ -240,7 +240,7 @@ export default function AppLauncher({ open, onClose }) {
   if (!open) return null;
 
   const panel = viewAll ? (
-    <div className="fixed inset-0 z-40 flex items-start justify-center bg-ink/45 px-3 pb-6 pt-14 backdrop-blur-[2px] sm:px-6">
+    <div className="overlay-scrim fixed inset-0 z-40 flex items-start justify-center px-3 pb-6 pt-14 sm:px-6">
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close" onClick={onClose} />
       <div
         role="dialog"
