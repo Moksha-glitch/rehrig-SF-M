@@ -130,6 +130,7 @@ export default function Dashboard() {
   const workOrdersQuery = useRecords('workOrders');
   const dispatchesQuery = useRecords('dispatches');
   const trucksQuery = useRecords('trucks');
+  const assetsQuery = useRecords('assets');
   const tipsQuery = useRecords('aggregatedTips');
   const accountsQuery = useAccounts();
   const settingsQuery = useWorkspaceSettings();
@@ -137,6 +138,7 @@ export default function Dashboard() {
   const workOrders = workOrdersQuery.data?.data || [];
   const dispatches = dispatchesQuery.data?.data || [];
   const trucks = trucksQuery.data?.data || [];
+  const assets = assetsQuery.data?.data || [];
   const tips = tipsQuery.data?.data || [];
   const accounts = accountsQuery.data || [];
   const user = state.currentUser;
@@ -262,6 +264,46 @@ export default function Dashboard() {
     value: Math.round((value.met / value.total) * 100),
     detail: `${value.met}/${value.total} completed by due date`,
   }));
+  const woOpenedClosed = Array.from({ length: 14 }, (_, index) => {
+    const date = new Date(now);
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (13 - index));
+    return {
+      dateKey: localDateKey(date),
+      day: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      opened: 0,
+      closed: 0,
+    };
+  });
+  workOrders.forEach((row) => {
+    const opened = parseRecordDate(row.requestDate || row.createdAt);
+    const openedPoint = opened && woOpenedClosed.find((item) => item.dateKey === localDateKey(opened));
+    if (openedPoint) openedPoint.opened += 1;
+    if (!['Closed', 'Complete'].includes(row.status)) return;
+    const closed = parseRecordDate(row.completionDate || row.closedDate);
+    const closedPoint = closed && woOpenedClosed.find((item) => item.dateKey === localDateKey(closed));
+    if (closedPoint) closedPoint.closed += 1;
+  });
+  const assetsByFamily = [...assets.reduce((groups, row) => {
+    const name = row.family || row.product || 'Unclassified';
+    groups.set(name, (groups.get(name) || 0) + 1);
+    return groups;
+  }, new Map()).entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([name, count]) => ({ name, count }));
+  const providersByIndustry = [...accounts.reduce((groups, row) => {
+    const name = row.industry || 'Other';
+    groups.set(name, (groups.get(name) || 0) + 1);
+    return groups;
+  }, new Map()).entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => ({ name, count }));
+  const truckByStatus = [...trucks.reduce((groups, row) => {
+    const name = row.status || 'Unknown';
+    groups.set(name, (groups.get(name) || 0) + 1);
+    return groups;
+  }, new Map()).entries()].map(([name, count]) => ({ name, count }));
   const completedDispatches = dispatches.filter((row) => row.status === 'Complete').length;
   const completedWorkOrders = workOrders.filter((row) => ['Closed', 'Complete'].includes(row.status)).length;
   const readiness = [
@@ -335,6 +377,40 @@ export default function Dashboard() {
     if (id === 'open-work-orders') {
       return <><p className="font-display text-3xl font-semibold text-ink">{openWorkOrders.length}</p><Button variant="ghost" onClick={() => navigate('workOrders')} className="mt-3">Open queue</Button></>;
     }
+    if (id === 'truck-utilization') {
+      const rate = trucks.length ? Math.round(activeTrucks.length / trucks.length * 100) : 0;
+      return <div className="space-y-4">
+        <OpsBar label="Active trucks" value={rate} target={`${activeTrucks.length}/${trucks.length} in field`} />
+        {truckByStatus.map((row) => (
+          <div key={row.name} className="flex justify-between text-xs">
+            <span>{row.name}</span>
+            <span className="mono font-semibold">{row.count}</span>
+          </div>
+        ))}
+      </div>;
+    }
+    if (id === 'wo-opened-closed') {
+      return <div className="h-44"><ResponsiveContainer width="100%" height="100%"><LineChart data={woOpenedClosed}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e6ebe8" /><XAxis dataKey="day" tick={{ fontSize: 9 }} interval={3} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 9 }} /><Tooltip />
+        <Line type="monotone" dataKey="opened" stroke="#0b5f49" dot={false} name="Opened" />
+        <Line type="monotone" dataKey="closed" stroke="#8b969f" dot={false} name="Closed" />
+      </LineChart></ResponsiveContainer></div>;
+    }
+    if (id === 'assets-by-family') {
+      const max = assetsByFamily[0]?.count || 1;
+      return assetsByFamily.length ? <div className="space-y-3">{assetsByFamily.map((row) => (
+        <div key={row.name}><div className="flex justify-between text-xs"><span className="truncate">{row.name}</span><span className="mono font-semibold">{row.count}</span></div>
+          <div className="mt-1 h-2 bg-elevated"><div className="h-2 bg-brand" style={{ width: `${(row.count / max) * 100}%` }} /></div></div>
+      ))}</div> : <p className="py-6 text-center text-sm text-ink-muted">No assets to group.</p>;
+    }
+    if (id === 'providers-by-industry') {
+      const max = providersByIndustry[0]?.count || 1;
+      return providersByIndustry.length ? <div className="space-y-3">{providersByIndustry.map((row) => (
+        <div key={row.name}><div className="flex justify-between text-xs"><span>{row.name}</span><span className="mono font-semibold">{row.count}</span></div>
+          <div className="mt-1 h-2 bg-elevated"><div className="h-2 bg-ink" style={{ width: `${(row.count / max) * 100}%` }} /></div></div>
+      ))}</div> : <p className="py-6 text-center text-sm text-ink-muted">No providers to group.</p>;
+    }
     const isMyWork = id === 'my-work-orders';
     const isDispatch = id === 'live-dispatches' || id === 'active-dispatches';
     const rows = isDispatch ? activeDispatches.slice(0, 5) : isMyWork ? myWorkOrders.slice(0, 5) : priorityWorkOrders;
@@ -348,7 +424,7 @@ export default function Dashboard() {
 
   const first = user?.firstName || 'there';
   const available = DASHBOARD_WIDGETS.filter((widget) => !layout.includes(widget.id));
-  const loading = workOrdersQuery.isLoading || dispatchesQuery.isLoading || trucksQuery.isLoading || tipsQuery.isLoading || accountsQuery.isLoading || settingsQuery.isLoading;
+  const loading = workOrdersQuery.isLoading || dispatchesQuery.isLoading || trucksQuery.isLoading || assetsQuery.isLoading || tipsQuery.isLoading || accountsQuery.isLoading || settingsQuery.isLoading;
 
   return (
     <Page wide>
@@ -367,7 +443,7 @@ export default function Dashboard() {
         ) : null}
       />
       <AsyncState loading={loading} error={workOrdersQuery.isError ? getErrorMessage(workOrdersQuery.error) : null} onRetry={() => {
-        workOrdersQuery.refetch(); dispatchesQuery.refetch(); trucksQuery.refetch(); tipsQuery.refetch(); accountsQuery.refetch(); settingsQuery.refetch();
+        workOrdersQuery.refetch(); dispatchesQuery.refetch(); trucksQuery.refetch(); assetsQuery.refetch(); tipsQuery.refetch(); accountsQuery.refetch(); settingsQuery.refetch();
       }}>
         {layout.length ? (
           <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-12">

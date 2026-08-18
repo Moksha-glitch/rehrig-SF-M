@@ -250,7 +250,19 @@ export const PICKLISTS = {
     { value: 'IdleStart', label: 'Idle Start' },
     { value: 'IdleEnd', label: 'Idle End' },
   ],
-  userRole: ['Admin', 'Ops Manager', 'Field Tech', 'Analyst', 'Dispatcher', 'Read-Only'],
+  userRole: [
+    'Admin',
+    'Ops Manager',
+    'Field Tech',
+    'Analyst',
+    'Dispatcher',
+    'Maintenance Admin',
+    'Read-Only',
+  ],
+  casters: ['None', '2-wheel', '4-wheel'],
+  hitch: ['None', 'Standard', 'Pintle', 'Ball'],
+  containerColour: ['Black', 'Green', 'Blue', 'Gray', 'Brown', 'Yellow', 'Red'],
+  sideDoor: ['None', 'Left', 'Right', 'Both'],
   mailingCountry: ['United States', 'Canada', 'Mexico'],
 };
 

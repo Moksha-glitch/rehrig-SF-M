@@ -257,6 +257,7 @@ export const RECORD_SCHEMAS = {
     listColumns: [
       { key: 'name', label: 'Asset Name' },
       { key: 'status', label: 'Status' },
+      { key: 'family', label: 'Family' },
       { key: 'product', label: 'Product' },
       { key: 'serial', label: 'Serial #' },
       { key: 'location', label: 'Customer Location' },
@@ -300,6 +301,11 @@ export const RECORD_SCHEMAS = {
           { key: 'warehouse', label: 'Warehouse', type: 'lookup' },
           { key: 'purchaseDate', label: 'Purchase Date', type: 'date' },
           { key: 'installDate', label: 'Install Date', type: 'date' },
+          { key: 'family', label: 'Asset Family', type: 'select', options: P.productFamily },
+          { key: 'casters', label: 'Casters', type: 'select', options: P.casters },
+          { key: 'hitch', label: 'Hitch', type: 'select', options: P.hitch },
+          { key: 'containerColour', label: 'Container Colour', type: 'select', options: P.containerColour },
+          { key: 'sideDoor', label: 'Side Door', type: 'select', options: P.sideDoor },
         ],
       },
       {
@@ -325,9 +331,9 @@ export const RECORD_SCHEMAS = {
       },
     ],
     sample: [
-      { name: 'CART-000123', status: 'In Service', product: '96 Gallon Trash', serial: 'SN-90012', account: 'Edmonton AB', location: '9803 102A Ave', rfid: 'RFID-90012', recordType: 'Asset', installDate: '2024-04-12', purchaseDate: '2024-03-28' },
-      { name: 'CART-000124', status: 'Awaiting Repair', product: '120 Liter Trash', serial: 'SN-90013', account: 'Edmonton AB', location: '9803 102A Ave', recordType: 'Asset', installDate: '2023-11-02', purchaseDate: '2023-10-15' },
-      { name: 'BIN-002210', status: 'Available', product: '3 YD Recycle Bin Recycling', serial: 'SN-71120', account: 'Toronto Waste Services', warehouse: 'Kennedale', location: '100 Queen St W', recordType: 'Asset', installDate: '2025-02-18', purchaseDate: '2025-01-30' },
+      { name: 'CART-000123', status: 'In Service', product: '96 Gallon Trash', serial: 'SN-90012', account: 'Edmonton AB', location: '9803 102A Ave', rfid: 'RFID-90012', recordType: 'Asset', installDate: '2024-04-12', purchaseDate: '2024-03-28', family: 'Roll-Out Cart', casters: '2-wheel', hitch: 'None', containerColour: 'Black', sideDoor: 'None' },
+      { name: 'CART-000124', status: 'Awaiting Repair', product: '120 Liter Trash', serial: 'SN-90013', account: 'Edmonton AB', location: '9803 102A Ave', recordType: 'Asset', installDate: '2023-11-02', purchaseDate: '2023-10-15', family: 'Roll-Out Cart', casters: '2-wheel', hitch: 'None', containerColour: 'Green', sideDoor: 'None' },
+      { name: 'BIN-002210', status: 'Available', product: '3 YD Recycle Bin Recycling', serial: 'SN-71120', account: 'Toronto Waste Services', warehouse: 'Kennedale', location: '100 Queen St W', recordType: 'Asset', installDate: '2025-02-18', purchaseDate: '2025-01-30', family: 'Bin', casters: '4-wheel', hitch: 'Pintle', containerColour: 'Blue', sideDoor: 'Left' },
     ],
   },
 

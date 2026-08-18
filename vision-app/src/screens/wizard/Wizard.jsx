@@ -1633,6 +1633,8 @@ function applyScreenOnOff(screen, on) {
     ...screen,
     view: on,
     edit: on,
+    create: on,
+    delete: on,
     fields: screen.fields
       ? screen.fields.map((field) => ({ ...field, view: on, edit: on }))
       : screen.fields,

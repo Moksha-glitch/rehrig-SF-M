@@ -11,6 +11,7 @@ export const USERS = [
   { id: 'u-dthorn', alias: 'dthorn', name: 'David Thornton', firstName: 'David', email: 'david@vision.io', persona: 'sp', role: 'Field Tech', scopeLabel: 'Edmonton AB only', active: true, accountIds: ['acc-212880'], segmentIds: [] },
   { id: 'u-praman', alias: 'praman', name: 'Priya Ramanathan', firstName: 'Priya', email: 'priya@vision.io', persona: 'sp', role: 'Analyst', scopeLabel: 'All accounts (Inactive)', active: false, accountIds: [], segmentIds: [] },
   { id: 'u-skami', alias: 'skami', name: 'Sarah Kaminski', firstName: 'Sarah', email: 'sarah@vision.io', persona: 'sp', role: 'Dispatcher', scopeLabel: 'Toronto Waste Services only', active: true, accountIds: ['acc-212883'], segmentIds: [] },
+  { id: 'u-jortiz', alias: 'jortiz', name: 'Jordan Ortiz', firstName: 'Jordan', email: 'jordan@vision.io', persona: 'sp', role: 'Maintenance Admin', scopeLabel: 'Edmonton AB only', active: true, accountIds: ['acc-212880'], segmentIds: [] },
   { id: 'u-rmedam', alias: 'rmedam', name: 'Ravindra Medam', firstName: 'Ravindra', email: 'ravi.medam@vision.io', persona: 'sp', role: 'Admin', scopeLabel: 'All accounts', active: true, accountIds: [], segmentIds: [] },
   // customer persona
   { id: 'u-sobrien', alias: 'sobrien', name: "Sam O'Brien", firstName: 'Sam', email: 'sam@vision.io', persona: 'customer', role: 'Portal User', scopeLabel: 'Edmonton AB', active: true, accountIds: ['acc-212880'], segmentIds: [], customerId: 'cust-1001' },

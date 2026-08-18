@@ -43,7 +43,7 @@ export const LAUNCHER_ITEMS = [
   { label: 'Request Type / Resolutions', module: 'requestTypeResolutions' },
   { label: 'Trucks', module: 'trucks' },
   { label: 'Work Orders', module: 'workOrders' },
-  { label: 'Bulk Import (White Tool)', module: 'bulkImport' },
+  { label: 'WOIT Import', module: 'bulkImport' },
   { label: 'Workspace', module: 'setup', params: { section: 'userMgmt' } },
 ];
 

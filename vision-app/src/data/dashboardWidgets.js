@@ -13,6 +13,10 @@ export const DASHBOARD_WIDGETS = [
   { id: 'open-work-orders', title: 'Open Work Orders', category: 'Operations', span: 4 },
   { id: 'trucks-in-field', title: 'Trucks in Field', category: 'Fleet', span: 4 },
   { id: 'tons-collected-today', title: 'Tons Collected Today', category: 'Collections', span: 4 },
+  { id: 'truck-utilization', title: 'Truck Utilization', category: 'Fleet', span: 6 },
+  { id: 'wo-opened-closed', title: 'WO Opened vs Closed', category: 'Operations', span: 6 },
+  { id: 'assets-by-family', title: 'Assets by Family', category: 'Assets', span: 4 },
+  { id: 'providers-by-industry', title: 'Providers by Industry', category: 'Overview', span: 4 },
 ];
 
 export const DASHBOARD_WIDGET_BY_ID = Object.fromEntries(
@@ -27,6 +31,8 @@ export const DASHBOARD_ROLE_PRESETS = {
     'live-dispatches',
     'priority-wos',
     'missed-pickups',
+    'truck-utilization',
+    'wo-opened-closed',
   ],
   'Field Tech': ['kpi-tiles', 'my-work-orders', 'live-dispatches', 'priority-wos'],
   Analyst: ['kpi-tiles', 'sla-by-account', 'hot-ticket-aging', 'missed-pickups'],

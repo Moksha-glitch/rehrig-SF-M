@@ -87,6 +87,11 @@ const PSGS = [
     perms: 'Full: Dispatches, Work Orders, Routes, Assets. No Contacts / Segments.',
   },
   {
+    name: 'SP Maintenance Admin PSG',
+    applies: 'Yard and fleet maintenance admins',
+    perms: 'Assets, trucks, route profile templates, and assigned work orders. Chatter and approvals.',
+  },
+  {
     name: 'Rehrig Admin PSG',
     applies: 'Rehrig internal administrators',
     perms: 'Full platform access: master catalog, all SP accounts, Configure sections.',

@@ -14,6 +14,7 @@ export const ROLE_PSG = {
   'sp:Field Tech': 'SP Field Tech PSG',
   'sp:Dispatcher': 'SP Dispatcher PSG',
   'sp:Analyst': 'SP Analyst (read-only)',
+  'sp:Maintenance Admin': 'SP Maintenance Admin PSG',
   'customer:Portal User': 'Customer Portal',
 };
 
@@ -55,10 +56,16 @@ export const ROLE_NAV_KEYS = {
     'reports',
     'dashboards',
     'reportSubs',
+    'chatter',
+    'approvals',
+    'customerInsights',
+    'recordSharing',
+    'automationCenter',
+    'holidays',
   ],
 
   // Field Tech — assigned Work Orders + Assets only (+ Map, Details)
-  'sp:Field Tech': ['assistant', 'home', 'details', 'r-assets', 'r-workOrders', 'mapCenter'],
+  'sp:Field Tech': ['assistant', 'home', 'details', 'r-assets', 'r-workOrders', 'mapCenter', 'chatter'],
 
   // Dispatcher — Dispatches / WOs / Routes / Assets / Trucks; no Contacts or Segments
   'sp:Dispatcher': [
@@ -79,6 +86,8 @@ export const ROLE_NAV_KEYS = {
     'mapCenter',
     'devices',
     'reports',
+    'chatter',
+    'approvals',
   ],
 
   // Analyst — dashboards / reports (read-only); no mutate tools
@@ -91,6 +100,21 @@ export const ROLE_NAV_KEYS = {
     'reportSubs',
     'r-aggTips',
     'r-indTips',
+    'customerInsights',
+  ],
+
+  // Maintenance Admin — assets, trucks, MRP, assigned WOs
+  'sp:Maintenance Admin': [
+    'assistant',
+    'home',
+    'details',
+    'r-assets',
+    'r-workOrders',
+    'r-trucks',
+    'r-mrp',
+    'mapCenter',
+    'chatter',
+    'approvals',
   ],
 
   // Customer portal
@@ -123,6 +147,13 @@ export const ROLE_MODULES = {
     'contractOnboarding',
     'setup',
     'userAccount',
+    'qalert',
+    'holidays',
+    'loginHistory',
+    'chatter',
+    'approvals',
+    'customerInsights',
+    'recordSharing',
   ],
 
   'sp:Admin': [
@@ -148,6 +179,12 @@ export const ROLE_MODULES = {
     'notificationConfig',
     'setup',
     'userAccount',
+    'chatter',
+    'approvals',
+    'customerInsights',
+    'recordSharing',
+    'automationCenter',
+    'holidays',
   ],
 
   'sp:Ops Manager': [
@@ -168,9 +205,28 @@ export const ROLE_MODULES = {
     'reportSubscriptions',
     'productTypes',
     'userAccount',
+    'chatter',
+    'approvals',
+    'customerInsights',
+    'recordSharing',
+    'automationCenter',
+    'holidays',
   ],
 
-  'sp:Field Tech': ['home', 'account', 'assets', 'workOrders', 'mapCenter', 'userAccount'],
+  'sp:Field Tech': ['home', 'account', 'assets', 'workOrders', 'mapCenter', 'userAccount', 'chatter'],
+
+  'sp:Maintenance Admin': [
+    'home',
+    'account',
+    'assets',
+    'workOrders',
+    'trucks',
+    'maintenanceRouteProfiles',
+    'mapCenter',
+    'userAccount',
+    'chatter',
+    'approvals',
+  ],
 
   'sp:Dispatcher': [
     'home',
@@ -188,6 +244,8 @@ export const ROLE_MODULES = {
     'analytics',
     'devices',
     'userAccount',
+    'chatter',
+    'approvals',
   ],
 
   'sp:Analyst': [
@@ -198,6 +256,7 @@ export const ROLE_MODULES = {
     'analytics',
     'reportSubscriptions',
     'userAccount',
+    'customerInsights',
   ],
 
   'customer:Portal User': [
@@ -234,6 +293,7 @@ export const ROLE_ACCOUNT_TABS = {
   'sp:Field Tech': ['details'],
   'sp:Dispatcher': ['details', 'routes', 'mindmap'],
   'sp:Analyst': ['details'],
+  'sp:Maintenance Admin': ['details'],
   'rehrig:Admin': [
     'details',
     'contacts',
@@ -301,6 +361,6 @@ export function canCreateRecordsForUser(user) {
   if (user.persona === 'customer') return false;
   if (user.persona === 'rehrig') return false; // oversight only
   // Field Tech + Analyst are read-only
-  if (user.role === 'Field Tech' || user.role === 'Analyst') return false;
+  if (user.role === 'Field Tech' || user.role === 'Analyst' || user.role === 'Read-Only') return false;
   return true;
 }

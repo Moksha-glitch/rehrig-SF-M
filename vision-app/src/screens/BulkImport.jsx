@@ -380,8 +380,8 @@ export default function BulkImport() {
     <Page>
       <PageHeader
         overline="Tools"
-        title="Bulk Import (White Tool)"
-        description="Upload a CSV to create records for this Service Provider. Portal customers are provisioned in identity systems, not here."
+        title="WOIT Import"
+        description="Work Order Import Tool. Upload a CSV to create records for this Service Provider. Portal customers are provisioned in identity systems, not here."
         actions={
           <Button variant="secondary" onClick={openMapping}>
             <Icon name="sliders" size={14} /> Column mapping

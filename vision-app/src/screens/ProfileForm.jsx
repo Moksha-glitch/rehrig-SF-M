@@ -93,7 +93,7 @@ function ProviderTree({ providers, setProviders }) {
 }
 
 function applyAccess(target, value) {
-  const next = { ...target, view: value, edit: value };
+  const next = { ...target, view: value, edit: value, create: value, delete: value };
   if (target.fields) {
     next.fields = target.fields.map((field) => ({ ...field, view: value, edit: value }));
   }
@@ -264,29 +264,26 @@ function ScreenModulePanel({ modules, setModules }) {
                         </div>
                         {screen.expanded && (
                           <div className="border-t border-line px-3 pb-3 pt-2">
-                            <div className="grid grid-cols-[1fr_52px_52px] items-center gap-1">
+                            <div className="grid grid-cols-[1fr_48px_48px_48px_48px] items-center gap-1">
                               <div />
-                              <div className="text-center text-[9px] uppercase tracking-wider text-ink-faint">
-                                View
-                              </div>
-                              <div className="text-center text-[9px] uppercase tracking-wider text-ink-faint">
-                                Edit
-                              </div>
+                              {['View', 'Edit', 'Create', 'Delete'].map((label) => (
+                                <div
+                                  key={label}
+                                  className="text-center text-[9px] uppercase tracking-wider text-ink-faint"
+                                >
+                                  {label}
+                                </div>
+                              ))}
                               <div className="text-[11.5px] font-medium text-ink">Screen access</div>
-                              <div className="flex justify-center">
-                                <Switch
-                                  checked={screen.view}
-                                  onChange={() => toggleFlag(group.module, screen.id, 'view')}
-                                  label={`${screen.name} view`}
-                                />
-                              </div>
-                              <div className="flex justify-center">
-                                <Switch
-                                  checked={screen.edit}
-                                  onChange={() => toggleFlag(group.module, screen.id, 'edit')}
-                                  label={`${screen.name} edit`}
-                                />
-                              </div>
+                              {['view', 'edit', 'create', 'delete'].map((flag) => (
+                                <div key={flag} className="flex justify-center">
+                                  <Switch
+                                    checked={!!screen[flag]}
+                                    onChange={() => toggleFlag(group.module, screen.id, flag)}
+                                    label={`${screen.name} ${flag}`}
+                                  />
+                                </div>
+                              ))}
                             </div>
                             {screen.fields && (
                               <div className="mt-2.5 max-h-[220px] overflow-y-auto border-t border-dashed border-line pt-2.5 scroll-thin">
@@ -365,6 +362,8 @@ export default function ProfileForm({
         ...screen,
         view: screen.view ?? !!screen.enabled,
         edit: screen.edit ?? !!screen.enabled,
+        create: screen.create ?? !!screen.enabled,
+        delete: screen.delete ?? false,
         fields: screen.fields
           ? screen.fields.map((field) => ({
               ...field,

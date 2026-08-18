@@ -251,7 +251,21 @@ export const PROFILE_SCREEN_MODULES = [
   },
   { module: 'Notes & Attachments', screens: ['Notes & Attachments List', 'New Note'] },
   { module: 'Driver Mobile App', screens: ['Mobile — Service Provider Admin View'] },
-  { module: 'Activity Feed', screens: ['Activity Feed (Chatter equivalent)'] },
+  {
+    module: 'Activity Feed',
+    screens: ['Activity Feed (Chatter equivalent)', 'Chatter Posts', 'Mentions'],
+  },
+  {
+    module: 'Governance',
+    screens: [
+      'Approvals Queue',
+      'Record Sharing',
+      'Customer Insights',
+      'Holiday Schedule',
+      'Automation Center',
+      'QAlert (Sarasota Co.)',
+    ],
+  },
   {
     module: 'Integration & Device Mapping',
     screens: ['WO Service Provider Mapping', 'Truck Device Sync'],
@@ -272,12 +286,16 @@ function screenFields(entry) {
 }
 
 function flagsForPreset(group, entry, index, preset) {
-  if (preset === 'all' || preset === true) return { view: true, edit: true };
-  if (preset === 'none' || preset === 'off' || preset === false) return { view: false, edit: false };
-  if (preset === 'view') return { view: true, edit: false };
+  if (preset === 'all' || preset === true) {
+    return { view: true, edit: true, create: true, delete: true };
+  }
+  if (preset === 'none' || preset === 'off' || preset === false) {
+    return { view: false, edit: false, create: false, delete: false };
+  }
+  if (preset === 'view') return { view: true, edit: false, create: false, delete: false };
   if (preset === 'mobile') {
     const on = group.module === 'Driver Mobile App' || group.module === 'Home Dashboard';
-    return { view: on, edit: on };
+    return { view: on, edit: on, create: false, delete: false };
   }
   const operational = [
     'Home Dashboard',
@@ -286,10 +304,26 @@ function flagsForPreset(group, entry, index, preset) {
     'Assets & Trucks',
     'Work Orders',
     'Routing & Dispatch',
+    'Activity Feed',
+    'Governance',
   ];
-  if (!operational.includes(group.module)) return { view: false, edit: false };
-  if (index === 0) return { view: true, edit: group.module === 'Home Dashboard' };
-  return { view: group.module === 'Home Dashboard', edit: false };
+  if (!operational.includes(group.module)) {
+    return { view: false, edit: false, create: false, delete: false };
+  }
+  if (index === 0) {
+    return {
+      view: true,
+      edit: group.module === 'Home Dashboard',
+      create: false,
+      delete: false,
+    };
+  }
+  return {
+    view: group.module === 'Home Dashboard',
+    edit: false,
+    create: false,
+    delete: false,
+  };
 }
 
 export function buildScreenModules(preset = 'all') {
@@ -304,6 +338,8 @@ export function buildScreenModules(preset = 'all') {
         name: screenName(entry),
         view: access.view,
         edit: access.edit,
+        create: access.create,
+        delete: access.delete,
         expanded: false,
         fields: fields
           ? fields.map((name, fieldIndex) => ({
@@ -319,7 +355,7 @@ export function buildScreenModules(preset = 'all') {
 }
 
 export function collectFlags(screen) {
-  const flags = [!!screen.view, !!screen.edit];
+  const flags = [!!screen.view, !!screen.edit, !!screen.create, !!screen.delete];
   (screen.fields || []).forEach((field) => {
     flags.push(!!field.view, !!field.edit);
   });
@@ -387,7 +423,10 @@ export function summarizeProfileAccess(providers, screens) {
   ).length;
   const enabledScreens = screens.reduce(
     (sum, group) =>
-      sum + group.screens.filter((screen) => screen.view || screen.edit || screen.enabled).length,
+      sum +
+      group.screens.filter(
+        (screen) => screen.view || screen.edit || screen.create || screen.delete || screen.enabled
+      ).length,
     0
   );
   const totalScreens = screens.reduce((sum, group) => sum + group.screens.length, 0);

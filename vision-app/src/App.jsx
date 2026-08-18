@@ -29,6 +29,7 @@ import Notifications from './screens/Notifications.jsx';
 import Devices from './screens/Devices.jsx';
 import ReportSubscriptions from './screens/ReportSubscriptions.jsx';
 import UserAccount from './screens/UserAccount.jsx';
+import V13Workstreams from './screens/V13Workstreams.jsx';
 import { getErrorMessage } from './lib/errors.js';
 import { onboardingNavParams, parseOnboardingReturn } from './utils/appNavigation.js';
 
@@ -88,6 +89,14 @@ function Router({ onOnboard }) {
     myNotifications: 'myNotifications',
     myAccount: 'userAccount',
     userAccount: 'userAccount',
+    chatter: 'chatter',
+    approvals: 'approvals',
+    qalert: 'qalert',
+    customerInsights: 'customerInsights',
+    recordSharing: 'recordSharing',
+    holidays: 'holidays',
+    automationCenter: 'automationCenter',
+    loginHistory: 'loginHistory',
   };
 
   const gateKey = GATE[module];
@@ -189,6 +198,15 @@ function Router({ onOnboard }) {
     case 'myAccount':
     case 'userAccount':
       return <UserAccount />;
+    case 'chatter':
+    case 'approvals':
+    case 'qalert':
+    case 'customerInsights':
+    case 'recordSharing':
+    case 'holidays':
+    case 'automationCenter':
+    case 'loginHistory':
+      return <V13Workstreams kind={module} />;
     default:
       return <NoAccess />;
   }
