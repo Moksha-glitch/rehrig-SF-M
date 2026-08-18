@@ -377,26 +377,27 @@ export function moduleAccessState(group) {
   return accessStateFromFlags(group.screens.flatMap(collectFlags));
 }
 
-export function buildProviderTree(accounts = [], segments = []) {
+export function buildProviderTree(accounts = [], segments = [], options = {}) {
+  const checked = options.checked !== false;
   if (!accounts.length) {
     return [
       {
         id: 'sp1',
         name: 'Service Provider 1',
-        checked: true,
+        checked,
         segments: [
-          { id: 'sp1-seg1', name: 'Segment 1', checked: false },
-          { id: 'sp1-seg2', name: 'Segment 2', checked: false },
-          { id: 'sp1-seg3', name: 'Segment 3', checked: false },
+          { id: 'sp1-seg1', name: 'Segment 1', checked },
+          { id: 'sp1-seg2', name: 'Segment 2', checked },
+          { id: 'sp1-seg3', name: 'Segment 3', checked },
         ],
       },
       {
         id: 'sp2',
         name: 'Service Provider 2',
-        checked: false,
+        checked,
         segments: [
-          { id: 'sp2-seg1', name: 'Segment 1', checked: false },
-          { id: 'sp2-seg2', name: 'Segment 2', checked: false },
+          { id: 'sp2-seg1', name: 'Segment 1', checked },
+          { id: 'sp2-seg2', name: 'Segment 2', checked },
         ],
       },
     ];
@@ -407,11 +408,11 @@ export function buildProviderTree(accounts = [], segments = []) {
     return {
       id: account.id,
       name: account.name,
-      checked: true,
+      checked,
       segments: kids.map((segment) => ({
         id: segment.id,
         name: segment.name,
-        checked: false,
+        checked,
       })),
     };
   });

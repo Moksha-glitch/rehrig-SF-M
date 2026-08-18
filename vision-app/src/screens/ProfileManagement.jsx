@@ -173,6 +173,7 @@ export default function ProfileManagement() {
       {editing && (
         <ProfileForm
           profile={editing.id ? editing : null}
+          profiles={profiles}
           accounts={accounts}
           segments={segments}
           onClose={() => setEditing(null)}

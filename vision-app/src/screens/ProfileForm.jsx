@@ -12,12 +12,60 @@ import {
 } from '../components/UI.jsx';
 import {
   TOTAL_PROFILE_SCREENS,
+  accessStateFromFlags,
   buildProviderTree,
   buildScreenModules,
+  collectFlags,
   moduleAccessState,
   screenAccessState,
   summarizeProfileAccess,
 } from '../data/profileAccess.js';
+
+function hydrateScreens(groups) {
+  return groups.map((group) => ({
+    ...group,
+    screens: group.screens.map((screen) => ({
+      ...screen,
+      view: screen.view ?? !!screen.enabled,
+      edit: screen.edit ?? !!screen.enabled,
+      create: screen.create ?? !!screen.enabled,
+      delete: screen.delete ?? false,
+      fields: screen.fields
+        ? screen.fields.map((field) => ({
+            ...field,
+            view: field.view ?? !!field.enabled,
+            edit: field.edit ?? !!field.enabled,
+          }))
+        : screen.fields,
+    })),
+  }));
+}
+
+function screensFromProfile(profile) {
+  if (profile?.screens?.length) return hydrateScreens(JSON.parse(JSON.stringify(profile.screens)));
+  return buildScreenModules(profile?.preset || (profile?.id ? 'partial' : 'none'));
+}
+
+function providersFromProfile(profile, accounts, segments, { blank = false } = {}) {
+  if (!blank && profile?.providers?.length) {
+    return JSON.parse(JSON.stringify(profile.providers));
+  }
+  return buildProviderTree(accounts, segments, {
+    checked: !blank && profile?.preset === 'all',
+  });
+}
+
+function allScreensState(modules) {
+  return accessStateFromFlags(modules.flatMap((group) => group.screens.flatMap(collectFlags)));
+}
+
+function enabledScreenCount(modules) {
+  return modules.reduce(
+    (sum, group) =>
+      sum + group.screens.filter((screen) => screen.view || screen.edit || screen.create || screen.delete).length,
+    0
+  );
+}
 
 function ProviderTree({ providers, setProviders }) {
   const toggleParent = (id) => {
@@ -104,6 +152,16 @@ function ScreenModulePanel({ modules, setModules }) {
   const [filter, setFilter] = useState('all');
   const visible =
     filter === 'all' ? modules : modules.filter((_, index) => String(index) === filter);
+  const fullState = allScreensState(modules);
+
+  const setAllScreens = (value) => {
+    setModules((prev) =>
+      prev.map((group) => ({
+        ...group,
+        screens: group.screens.map((screen) => applyAccess(screen, value)),
+      }))
+    );
+  };
 
   const toggleModuleExpand = (moduleName) => {
     setModules((prev) =>
@@ -176,6 +234,19 @@ function ScreenModulePanel({ modules, setModules }) {
 
   return (
     <div>
+      <div className="mb-2 flex items-start justify-between gap-3 rounded-lg border border-line bg-elevated/40 px-3 py-2.5">
+        <div className="min-w-0">
+          <div className="text-[12.5px] font-medium text-ink">Full Access — All Screens</div>
+          <p className="mt-0.5 text-[11px] text-ink-muted">
+            View &amp; Edit everything across every module in one switch
+          </p>
+        </div>
+        <Switch
+          state={fullState}
+          onChange={setAllScreens}
+          label="Full access — all screens"
+        />
+      </div>
       <select
         value={filter}
         onChange={(event) => setFilter(event.target.value)}
@@ -337,6 +408,7 @@ function ScreenModulePanel({ modules, setModules }) {
 
 export default function ProfileForm({
   profile,
+  profiles = [],
   accounts = [],
   segments = [],
   onClose,
@@ -346,42 +418,49 @@ export default function ProfileForm({
   error = '',
 }) {
   const isNew = !profile?.id;
-  const [name, setName] = useState(profile?.role || '');
-  const [status, setStatus] = useState(profile?.status !== 'Inactive');
-  const [description, setDescription] = useState(profile?.description || '');
+  const [step, setStep] = useState(isNew ? 'choose' : 'form');
+  const [createMode, setCreateMode] = useState('blank');
+  const [cloneId, setCloneId] = useState(profiles[0]?.id || '');
+  const [name, setName] = useState(isNew ? '' : profile?.role || '');
+  const [status, setStatus] = useState(isNew ? false : profile?.status !== 'Inactive');
+  const [description, setDescription] = useState(isNew ? '' : profile?.description || '');
   const [providers, setProviders] = useState(() =>
-    profile?.providers || buildProviderTree(accounts, segments)
+    isNew ? buildProviderTree(accounts, segments, { checked: false }) : providersFromProfile(profile, accounts, segments)
   );
-  const [screens, setScreens] = useState(() => {
-    if (!profile?.screens?.length) {
-      return buildScreenModules(profile?.preset || (profile?.id ? 'partial' : 'all'));
-    }
-    return profile.screens.map((group) => ({
-      ...group,
-      screens: group.screens.map((screen) => ({
-        ...screen,
-        view: screen.view ?? !!screen.enabled,
-        edit: screen.edit ?? !!screen.enabled,
-        create: screen.create ?? !!screen.enabled,
-        delete: screen.delete ?? false,
-        fields: screen.fields
-          ? screen.fields.map((field) => ({
-              ...field,
-              view: field.view ?? !!field.enabled,
-              edit: field.edit ?? !!field.enabled,
-            }))
-          : screen.fields,
-      })),
-    }));
-  });
+  const [screens, setScreens] = useState(() =>
+    isNew ? buildScreenModules('none') : screensFromProfile(profile)
+  );
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const snapshot = JSON.stringify({ name, status, description, providers, screens });
-  const initialRef = useRef(snapshot);
-  const dirty = snapshot !== initialRef.current;
+  const initialRef = useRef(isNew ? '' : snapshot);
+  const dirty = step === 'form' && snapshot !== initialRef.current;
+  const screenCount = enabledScreenCount(screens);
+  const canSave = !!name.trim() && screenCount > 0;
+
+  const startForm = () => {
+    if (createMode === 'clone') {
+      const source = profiles.find((item) => item.id === cloneId);
+      if (!source) return;
+      setName('');
+      setStatus(false);
+      setDescription('');
+      setProviders(providersFromProfile(source, accounts, segments));
+      setScreens(screensFromProfile(source));
+    } else {
+      setName('');
+      setStatus(false);
+      setDescription('');
+      setProviders(providersFromProfile(null, accounts, segments, { blank: true }));
+      setScreens(buildScreenModules('none'));
+    }
+    setStep('form');
+    initialRef.current = '';
+  };
 
   const handleSubmit = () => {
     if (!name.trim()) return;
+    if (screenCount === 0) return;
     onSave({
       ...(profile || {}),
       id: profile?.id,
@@ -393,6 +472,97 @@ export default function ProfileForm({
       screens,
     });
   };
+
+  if (step === 'choose') {
+    return (
+      <FormDrawer
+        onClose={onClose}
+        onSubmit={(event) => {
+          event.preventDefault();
+          startForm();
+        }}
+        title="New Profile"
+        description="Start from scratch, or clone an existing profile's access."
+        dirty={false}
+        busy={busy}
+        submitLabel="Continue"
+        footer={
+          <DrawerActions>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={createMode === 'clone' && !cloneId}
+            >
+              Continue
+            </Button>
+          </DrawerActions>
+        }
+      >
+        <div className="space-y-2">
+          {[
+            {
+              id: 'blank',
+              title: 'Create New Profile',
+              body: 'Start with everything unchecked.',
+            },
+            {
+              id: 'clone',
+              title: 'Clone an Existing Profile',
+              body: 'Copies Service Provider and Screen access — you just name it and save.',
+            },
+          ].map((option) => {
+            const selected = createMode === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setCreateMode(option.id)}
+                className={`w-full rounded-panel border px-4 py-3 text-left transition-colors ${
+                  selected
+                    ? 'border-brand bg-brand-soft'
+                    : 'border-line bg-surface hover:bg-elevated/70'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                      selected ? 'border-brand' : 'border-line-strong'
+                    }`}
+                    aria-hidden
+                  >
+                    {selected && <span className="h-2 w-2 rounded-full bg-brand" />}
+                  </span>
+                  <span>
+                    <span className="block text-sm font-medium text-ink">{option.title}</span>
+                    <span className="mt-0.5 block text-[13px] text-ink-muted">{option.body}</span>
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {createMode === 'clone' && (
+          <Field label="Clone from" className="mt-4">
+            <select
+              value={cloneId}
+              onChange={(event) => setCloneId(event.target.value)}
+              className="field-input h-10"
+              aria-label="Profile to clone"
+            >
+              {profiles.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.role}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+      </FormDrawer>
+    );
+  }
 
   return (
     <>
@@ -418,7 +588,7 @@ export default function ProfileForm({
               <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" disabled={busy || !name.trim()}>
+              <Button type="submit" variant="primary" disabled={busy || !canSave}>
                 {busy ? 'Saving…' : 'Save Profile'}
               </Button>
             </div>
@@ -456,9 +626,12 @@ export default function ProfileForm({
           </div>
           <div>
             <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-ink-faint">
-              Screens · grouped by module
+              Screens · grouped by module *
             </div>
             <ScreenModulePanel modules={screens} setModules={setScreens} />
+            {screenCount === 0 && (
+              <p className="mt-2 text-[12px] text-danger">Turn on at least one screen.</p>
+            )}
           </div>
         </div>
       </FormDrawer>
