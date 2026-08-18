@@ -421,7 +421,7 @@ function DetailsTab({ account }) {
                   {a.country || ''}
                 </div>
                 <div
-                  className="mt-3 flex h-24 items-center justify-center border border-line bg-[linear-gradient(to_right,#e6ebe8_1px,transparent_1px),linear-gradient(to_bottom,#e6ebe8_1px,transparent_1px)]"
+                  className="map-grid mt-3 flex h-24 items-center justify-center border border-line"
                   style={{ backgroundSize: '18px 18px' }}
                 >
                   <Icon name="mapPin" size={20} className="text-danger" />

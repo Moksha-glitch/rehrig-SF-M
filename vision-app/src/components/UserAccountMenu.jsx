@@ -1,5 +1,7 @@
 import React from 'react';
 import Icon from './Icon.jsx';
+import ThemeToggle from './ThemeToggle.jsx';
+import { useStore } from '../state/AppStore.jsx';
 
 export default function UserAccountMenu({
   user,
@@ -17,6 +19,8 @@ export default function UserAccountMenu({
   onClose,
   className = 'absolute left-0 bottom-full z-40 mb-2 w-64 rounded-panel border border-line bg-surface p-1.5 shadow-float',
 }) {
+  const { state, setTheme } = useStore();
+
   return (
     <div role="menu" className={className}>
       <div className="border-b border-line px-3 py-2.5">
@@ -29,14 +33,18 @@ export default function UserAccountMenu({
           </div>
         )}
       </div>
+      <div className="border-b border-line px-3 py-2.5">
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+          Appearance
+        </div>
+        <ThemeToggle compact value={state.theme} onChange={setTheme} className="w-full justify-between" />
+      </div>
       {(persona === 'rehrig' || persona === 'sp' || persona === 'customer') && (
         <button
           type="button"
           role="menuitem"
           onClick={() => {
-            if (persona === 'rehrig') navigate('setup', { section: 'account' });
-            else if (persona === 'sp') navigate('account', { tab: 'details' });
-            else navigate('myAccount');
+            navigate('userAccount');
             onClose();
           }}
           className="mt-1 flex w-full items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-ink-muted interactive hover:bg-elevated hover:text-ink"

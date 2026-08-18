@@ -87,7 +87,7 @@ export function StatStrip({ items, compact = false }) {
 export function Toolbar({ children, className = '' }) {
   return (
     <div
-      className={`flex flex-wrap items-center gap-3 border-b border-line bg-elevated/40 px-4 py-3.5 sm:px-5 ${className}`}
+      className={`toolbar flex flex-wrap items-center gap-3 border-b border-line bg-elevated/40 px-4 py-3.5 sm:flex-nowrap sm:px-5 ${className}`}
     >
       {children}
     </div>
@@ -105,7 +105,7 @@ export function SearchField({
   const inputId = useId();
   const accessibleName = ariaLabel || label || placeholder || 'Search';
   return (
-    <div className={`relative min-w-0 max-w-sm flex-1 ${className}`}>
+    <div className={`relative min-w-[12rem] max-w-sm flex-1 ${className}`}>
       <label htmlFor={inputId} className="sr-only">
         {accessibleName}
       </label>

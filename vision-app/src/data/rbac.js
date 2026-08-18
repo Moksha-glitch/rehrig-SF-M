@@ -122,6 +122,7 @@ export const ROLE_MODULES = {
     'onboarding',
     'contractOnboarding',
     'setup',
+    'userAccount',
   ],
 
   'sp:Admin': [
@@ -146,6 +147,7 @@ export const ROLE_MODULES = {
     'productTypes',
     'notificationConfig',
     'setup',
+    'userAccount',
   ],
 
   'sp:Ops Manager': [
@@ -165,9 +167,10 @@ export const ROLE_MODULES = {
     'devices',
     'reportSubscriptions',
     'productTypes',
+    'userAccount',
   ],
 
-  'sp:Field Tech': ['home', 'account', 'assets', 'workOrders', 'mapCenter'],
+  'sp:Field Tech': ['home', 'account', 'assets', 'workOrders', 'mapCenter', 'userAccount'],
 
   'sp:Dispatcher': [
     'home',
@@ -184,6 +187,7 @@ export const ROLE_MODULES = {
     'mapCenter',
     'analytics',
     'devices',
+    'userAccount',
   ],
 
   'sp:Analyst': [
@@ -193,9 +197,17 @@ export const ROLE_MODULES = {
     'individualTips',
     'analytics',
     'reportSubscriptions',
+    'userAccount',
   ],
 
-  'customer:Portal User': ['home', 'myLocations', 'myWorkOrders', 'myNotifications', 'myAccount'],
+  'customer:Portal User': [
+    'home',
+    'myLocations',
+    'myWorkOrders',
+    'myNotifications',
+    'myAccount',
+    'userAccount',
+  ],
 };
 
 /** Account-detail tabs each SP role may open */

@@ -324,6 +324,7 @@ export const MODULE_LABELS = {
   myWorkOrders: 'My Work Orders',
   myNotifications: 'Notifications',
   myAccount: 'My Account',
+  userAccount: 'Your Account',
   onboarding: 'Guided Onboarding',
   contractOnboarding: 'Contract Onboarding',
 };

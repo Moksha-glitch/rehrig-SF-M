@@ -118,9 +118,6 @@ export default function ProfileManagement() {
 
       <Panel>
         <Toolbar>
-          <div className="text-sm font-medium text-ink">
-            Profiles · {filtered.length}
-          </div>
           <Select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
@@ -137,6 +134,9 @@ export default function ProfileManagement() {
             placeholder="Search profiles…"
             label="Search profiles"
           />
+          <div className="ml-auto shrink-0 text-sm font-medium text-ink">
+            Profiles · {filtered.length}
+          </div>
         </Toolbar>
         <Table columns={['Profile', 'Access', 'Status', 'Created', 'Last updated']}>
           {filtered.map((profile) => (

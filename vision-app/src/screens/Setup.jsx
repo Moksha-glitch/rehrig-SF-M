@@ -32,6 +32,7 @@ import {
   canAccessModuleForUser,
   canCreateRecordsForUser,
 } from '../data/rbac.js';
+import { UserAccountPanels } from './UserAccount.jsx';
 
 const SECTIONS = [
   {
@@ -480,30 +481,7 @@ export default function Setup() {
             </>
           )}
 
-          {section === 'account' && (
-            <SetupBlock
-              title="The signed-in user's own profile and preferences"
-              action={
-                canEditPreferences && (
-                  <Button variant="secondary" onClick={openPrefEdit}>
-                    <Icon name="edit" size={14} /> Edit preferences
-                  </Button>
-                )
-              }
-            >
-              <SettingRow label="Name" value={state.currentUser?.name} />
-              <SettingRow label="Alias" value={state.currentUser?.alias} />
-              <SettingRow label="Email" value={state.currentUser?.email} />
-              <SettingRow label="Persona" value={state.currentUser?.persona} />
-              <SettingRow label="Role" value={state.currentUser?.role} />
-              <SettingRow label="Scope" value={state.currentUser?.scopeLabel} />
-              <SettingRow
-                label="Notification preference"
-                value={settings.notificationPreference}
-              />
-              <SettingRow label="Default landing" value={settings.defaultLanding} />
-            </SetupBlock>
-          )}
+          {section === 'account' && <UserAccountPanels />}
 
           {section === 'devcon' && (
             <div className="space-y-5">

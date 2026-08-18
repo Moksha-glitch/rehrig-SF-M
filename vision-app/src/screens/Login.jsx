@@ -1,7 +1,9 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import RehrigLogo from '../components/RehrigLogo.jsx';
+import ThemeToggle from '../components/ThemeToggle.jsx';
 import { useAuth } from '../state/AuthContext.jsx';
+import { useStore } from '../state/AppStore.jsx';
 import { useDemoUsers } from '../hooks/useDemoUsers.js';
 import { getErrorMessage } from '../lib/errors.js';
 
@@ -24,6 +26,7 @@ function validateFields(username, password) {
 
 export default function Login() {
   const { login, rememberDefault } = useAuth();
+  const { state, setTheme } = useStore();
   const usernameId = useId();
   const passwordId = useId();
   const formErrorId = useId();
@@ -113,12 +116,12 @@ export default function Login() {
   };
 
   return (
-    <main className="box-border flex min-h-screen w-full items-center justify-center overflow-y-auto bg-white p-4 sm:p-6">
+    <main className="box-border flex min-h-screen w-full items-center justify-center overflow-y-auto bg-canvas p-4 sm:p-6">
       <a href={`#${formDomId}`} className="skip-link">
         Skip to sign in
       </a>
 
-      <div className="grid w-full max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border border-[#c7e5f3] bg-white shadow-float lg:h-[min(50rem,calc(100vh-2rem))] lg:max-h-[calc(100vh-2rem)] lg:grid-cols-2">
+      <div className="grid w-full max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border border-line bg-surface shadow-float lg:h-[min(50rem,calc(100vh-2rem))] lg:max-h-[calc(100vh-2rem)] lg:grid-cols-2">
         <section
           className="relative flex min-h-[16rem] min-w-0 flex-col overflow-hidden px-6 py-8 sm:px-10 lg:min-h-0 lg:px-12 lg:py-10"
           style={{
@@ -146,18 +149,21 @@ export default function Login() {
         </section>
 
         <section
-          className="min-h-0 min-w-0 overflow-y-auto border-t border-[#d9e5ed] bg-white scroll-thin lg:border-l lg:border-t-0"
+          className="min-h-0 min-w-0 overflow-y-auto border-t border-line bg-surface scroll-thin lg:border-l lg:border-t-0"
           aria-labelledby="signin-heading"
         >
         <div className="flex min-h-full items-center justify-center px-5 py-8 sm:px-10 lg:px-12 lg:py-10">
         <div className="w-full max-w-[25rem] animate-fade-up">
-          <div className="mb-9">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#55a9d5]">
-              Welcome back
-            </p>
-            <h2 id="signin-heading" className="font-display text-2xl font-semibold tracking-tight text-[#0b3f72] sm:text-3xl">
-              Let&apos;s get started.
-            </h2>
+          <div className="mb-9 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-brand">
+                Welcome back
+              </p>
+              <h2 id="signin-heading" className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                Let&apos;s get started.
+              </h2>
+            </div>
+            <ThemeToggle compact value={state.theme} onChange={setTheme} />
           </div>
 
           <form

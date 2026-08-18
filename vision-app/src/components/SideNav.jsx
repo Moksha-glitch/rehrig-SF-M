@@ -11,36 +11,102 @@ function initials(name) {
   return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase();
 }
 
-function VaiMark({ size = 32, muted = false }) {
+function VaiRow({ active = false, collapsed = false }) {
   const id = React.useId().replace(/:/g, '');
-  const ink = muted ? '#64748B' : '#5DB7E7';
+  const ink = active ? '#5DB7E7' : '#64748B';
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      {!muted && (
-        <path
-          d="M11.2256 31.7998C20.1635 31.7998 29.559 24.3516 29.559 15.9382C29.559 7.52467 20.1635 0.710938 11.2256 0.710938C2.28764 0.710938 0.441406 7.52467 0.441406 15.9382C0.441406 24.3516 2.28764 31.7998 11.2256 31.7998Z"
-          fill={`url(#vai-wash-${id})`}
-          fillOpacity="0.2"
-        />
+    <svg
+      width={collapsed ? 48 : 240}
+      height={collapsed ? 48 : 49}
+      viewBox={collapsed ? '0.5 0 48 48' : '0 0 240 49'}
+      fill="none"
+      aria-hidden="true"
+      className="nav-vai-art"
+    >
+      {active && (
+        <>
+          <rect
+            x="0.5"
+            width="239"
+            height="48"
+            rx="4"
+            fill={`url(#vai-fill-a-${id})`}
+            fillOpacity="0.2"
+          />
+          <rect x="0.5" width="239" height="48" rx="4" fill={`url(#vai-fill-b-${id})`} />
+          <rect
+            x="0.5"
+            width="239"
+            height="48"
+            rx="4"
+            stroke={`url(#vai-stroke-${id})`}
+            strokeOpacity="0.15"
+          />
+          <path
+            d="M19.7256 39.7998C28.6635 39.7998 38.059 32.3516 38.059 23.9382C38.059 15.5247 28.6635 8.71094 19.7256 8.71094C10.7876 8.71094 8.94141 15.5247 8.94141 23.9382C8.94141 32.3516 10.7876 39.7998 19.7256 39.7998Z"
+            fill={`url(#vai-mark-${id})`}
+            fillOpacity="0.2"
+          />
+        </>
       )}
       <path
-        d="M19.42 10.2305V12.897M20.7437 11.5637H18.0964M10.1546 22.23C10.1546 22.9663 9.56198 23.5633 8.83096 23.5633C8.09994 23.5633 7.50732 22.9663 7.50732 22.23C7.50732 21.4936 8.09994 20.8967 8.83096 20.8967C9.56198 20.8967 10.1546 21.4936 10.1546 22.23Z"
+        d="M27.92 18.2305V20.897M29.2437 19.5637H26.5964M18.6546 30.23C18.6546 30.9663 18.062 31.5633 17.331 31.5633C16.5999 31.5633 16.0073 30.9663 16.0073 30.23C16.0073 29.4936 16.5999 28.8967 17.331 28.8967C18.062 28.8967 18.6546 29.4936 18.6546 30.23Z"
         stroke={ink}
         strokeWidth="1.5"
         strokeLinecap="round"
       />
       <path
-        d="M13.6763 24.8889L10.8825 19.259L5.29395 16.4444L10.8825 13.6299L13.6763 8L16.4701 13.6299L22.0587 16.4444L16.4701 19.259L13.6763 24.8889ZM8.39042 16.4444L11.9198 18.2305L13.6763 21.786L15.4492 18.2305L18.9787 16.4444L15.4492 14.6749L13.6763 11.1194L11.9198 14.6749L8.39042 16.4444Z"
+        d="M22.1763 32.8889L19.3825 27.259L13.7939 24.4444L19.3825 21.6299L22.1763 16L24.9701 21.6299L30.5587 24.4444L24.9701 27.259L22.1763 32.8889ZM16.8904 24.4444L20.4198 26.2305L22.1763 29.786L23.9492 26.2305L27.4787 24.4444L23.9492 22.6749L22.1763 19.1194L20.4198 22.6749L16.8904 24.4444Z"
         fill={ink}
       />
-      {!muted && (
+      {!collapsed && (
+        <path
+          d="M50.1506 18.8182L53.1733 27.3892H53.2926L56.3153 18.8182H57.608L53.8693 29H52.5966L48.858 18.8182H50.1506ZM58.7365 29H57.4439L61.1825 18.8182H62.4553L66.1939 29H64.9013L61.8587 20.429H61.7791L58.7365 29ZM59.2138 25.0227H64.424V26.1165H59.2138V25.0227ZM69.0128 18.8182V29H67.7798V18.8182H69.0128Z"
+          fill="#64748B"
+        />
+      )}
+      {active && (
         <defs>
           <linearGradient
-            id={`vai-wash-${id}`}
-            x1="15.0002"
-            y1="0.710937"
-            x2="15.0002"
-            y2="31.7998"
+            id={`vai-fill-a-${id}`}
+            x1="120"
+            y1="0"
+            x2="120"
+            y2="48"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#BB00BB" />
+            <stop offset="1" stopColor="#2B81FF" />
+          </linearGradient>
+          <linearGradient
+            id={`vai-fill-b-${id}`}
+            x1="0.5"
+            y1="24"
+            x2="239.5"
+            y2="24"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="white" stopOpacity="0.7" />
+            <stop offset="0.504808" stopColor="white" stopOpacity="0.5" />
+            <stop offset="1" stopColor="white" stopOpacity="0.7" />
+          </linearGradient>
+          <linearGradient
+            id={`vai-stroke-${id}`}
+            x1="183.438"
+            y1="6.07321"
+            x2="182.051"
+            y2="51.1314"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#BB00BB" />
+            <stop offset="1" stopColor="#2B81FF" />
+          </linearGradient>
+          <linearGradient
+            id={`vai-mark-${id}`}
+            x1="23.5002"
+            y1="8.71094"
+            x2="23.5002"
+            y2="39.7998"
             gradientUnits="userSpaceOnUse"
           >
             <stop stopColor="#BB00BB" />
@@ -60,16 +126,9 @@ function VisionAiNavButton({ active, collapsed, onClick }) {
       title="Vision AI"
       aria-label="Vision AI"
       aria-current={active ? 'page' : undefined}
-      className={
-        collapsed
-          ? `nav-vai-collapsed ${active ? 'nav-vai-active' : ''}`
-          : `nav-vai w-full ${active ? 'nav-vai-active' : ''}`
-      }
+      className={`nav-vai ${collapsed ? 'nav-vai-collapsed' : ''} ${active ? 'nav-vai-active' : ''}`}
     >
-      <span className={collapsed ? 'flex h-8 w-8 items-center justify-center' : 'nav-vai-mark'}>
-        <VaiMark muted={!active} />
-      </span>
-      {!collapsed && <span className="nav-vai-label">VAI</span>}
+      <VaiRow active={active} collapsed={collapsed} />
     </button>
   );
 }
@@ -295,7 +354,7 @@ export default function SideNav({ open, onToggle }) {
   const tree = useMemo(() => filterNavTree(NAV[persona] || [], canNav), [persona, canNav]);
 
   const activeModule = state.nav.module;
-  const activeParams = state.nav.params || {};
+  const activeParams = state.nav.params;
 
   const accounts = accountsQuery.data || [];
   const scopedAccount =
@@ -310,7 +369,9 @@ export default function SideNav({ open, onToggle }) {
       return;
     }
     const activeSection = tree.find(
-      (node) => node.type === 'section' && node.children?.some((item) => isNavItemActive(item, activeModule, activeParams))
+      (node) =>
+        node.type === 'section' &&
+        node.children?.some((item) => isNavItemActive(item, activeModule, activeParams || {}))
     );
     if (activeSection) setOpenFolder(activeSection.label);
   }, [open, tree, activeModule, activeParams]);
@@ -318,6 +379,7 @@ export default function SideNav({ open, onToggle }) {
   useEffect(() => {
     const onPointerDown = (event) => {
       if (!accountRef.current?.contains(event.target)) setAccountOpen(false);
+      if (open) return;
       const inShell = shellRef.current?.contains(event.target);
       const inFlyout = event.target.closest?.('[role="menu"]');
       if (!inShell && !inFlyout) setOpenFolder(null);
@@ -325,7 +387,7 @@ export default function SideNav({ open, onToggle }) {
     const onKeyDown = (event) => {
       if (event.key === 'Escape') {
         setAccountOpen(false);
-        setOpenFolder(null);
+        if (!open) setOpenFolder(null);
       }
     };
     document.addEventListener('pointerdown', onPointerDown);
@@ -334,7 +396,7 @@ export default function SideNav({ open, onToggle }) {
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, []);
+  }, [open]);
 
   if (!tree.length) return null;
 
@@ -398,10 +460,9 @@ export default function SideNav({ open, onToggle }) {
           }`}
         >
           {tree.map((node) => {
-            const pinBottom = node.module === 'notifications' || node.module === 'myNotifications';
             if (node.type === 'item') {
               return (
-                <div key={node.key} className={pinBottom ? 'mt-auto pt-2' : undefined}>
+                <div key={node.key}>
                   <NavButton
                     item={node}
                     active={isItemActive(node)}

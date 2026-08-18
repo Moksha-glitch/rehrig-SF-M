@@ -15,7 +15,8 @@ import {
   ROLE_PSG,
   roleKey,
 } from '../data/rbac.js';
-import { appRepository } from '../utils/appRepository.js';
+import { appRepository, preferences } from '../utils/appRepository.js';
+import { applyResolvedTheme, normalizeTheme, subscribeSystemTheme } from '../utils/theme.js';
 import { readNavigation, writeNavigation } from '../utils/appNavigation.js';
 import { AppStoreContext } from './storeContext.js';
 
@@ -59,7 +60,7 @@ function reducer(state, action) {
         assistantOpen: false,
       };
     case 'SET_THEME':
-      return { ...state, theme: action.theme };
+      return { ...state, theme: normalizeTheme(action.theme) };
     case 'NAVIGATE':
       return { ...state, nav: { module: action.module, params: action.params || {} } };
     case 'ADD_ACCOUNT':
@@ -292,7 +293,9 @@ export function DemoAppStoreProvider({ children }) {
   }, [state]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = state.theme;
+    applyResolvedTheme(state.theme);
+    preferences.setTheme(state.theme);
+    return subscribeSystemTheme(state.theme, () => applyResolvedTheme(state.theme));
   }, [state.theme]);
 
   useEffect(() => {

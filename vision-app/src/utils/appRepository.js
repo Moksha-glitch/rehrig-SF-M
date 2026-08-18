@@ -105,7 +105,7 @@ function seedOperationalRecords() {
 export function createSeedState() {
   return {
     currentUser: null,
-    theme: 'light',
+    theme: preferences.getTheme(),
     accounts: clone(ACCOUNTS),
     contacts: clone(CONTACTS),
     segments: clone(SEGMENTS),
@@ -232,6 +232,7 @@ export const appRepository = {
         const sessionUser = USERS.find((candidate) => candidate.id === sessionId) || null;
         return {
           ...seed,
+          theme: preferences.getTheme(),
           currentUser: sessionUser,
           followedAccountIds: readFollowedAccountIds(),
         };
@@ -249,6 +250,7 @@ export const appRepository = {
       return {
         ...seed,
         ...saved,
+        theme: preferences.getTheme(),
         currentUser: user,
         followedAccountIds: followedFromState,
         config: { ...seed.config, ...(saved.config || {}) },
@@ -353,14 +355,18 @@ export const appRepository = {
 export const preferences = {
   getTheme() {
     try {
-      return window.localStorage.getItem(THEME_KEY) || 'light';
+      const stored = window.localStorage.getItem(THEME_KEY);
+      return stored === 'dark' || stored === 'system' ? stored : 'light';
     } catch {
       return 'light';
     }
   },
   setTheme(theme) {
     try {
-      window.localStorage.setItem(THEME_KEY, theme);
+      window.localStorage.setItem(
+        THEME_KEY,
+        theme === 'dark' || theme === 'system' ? theme : 'light'
+      );
     } catch {
       /* ignore */
     }

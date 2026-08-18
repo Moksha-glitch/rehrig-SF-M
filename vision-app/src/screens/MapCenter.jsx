@@ -337,7 +337,7 @@ export default function MapCenter() {
           </fieldset>
 
           <div
-            className="relative h-96 overflow-hidden rounded-panel border border-line bg-[linear-gradient(to_right,#e6ebe8_1px,transparent_1px),linear-gradient(to_bottom,#e6ebe8_1px,transparent_1px)]"
+            className="map-grid relative h-96 overflow-hidden rounded-panel border border-line"
             style={{ backgroundSize: '24px 24px' }}
             role="list"
             aria-label="Map pins"

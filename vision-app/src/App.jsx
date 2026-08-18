@@ -28,6 +28,7 @@ import Activity from './screens/Activity.jsx';
 import Notifications from './screens/Notifications.jsx';
 import Devices from './screens/Devices.jsx';
 import ReportSubscriptions from './screens/ReportSubscriptions.jsx';
+import UserAccount from './screens/UserAccount.jsx';
 import { getErrorMessage } from './lib/errors.js';
 import { onboardingNavParams, parseOnboardingReturn } from './utils/appNavigation.js';
 
@@ -85,7 +86,8 @@ function Router({ onOnboard }) {
     myLocations: 'myLocations',
     myWorkOrders: 'myWorkOrders',
     myNotifications: 'myNotifications',
-    myAccount: 'myAccount',
+    myAccount: 'userAccount',
+    userAccount: 'userAccount',
   };
 
   const gateKey = GATE[module];
@@ -183,8 +185,10 @@ function Router({ onOnboard }) {
     case 'myLocations':
     case 'myWorkOrders':
     case 'myNotifications':
-    case 'myAccount':
       return <CustomerHome view={module} />;
+    case 'myAccount':
+    case 'userAccount':
+      return <UserAccount />;
     default:
       return <NoAccess />;
   }

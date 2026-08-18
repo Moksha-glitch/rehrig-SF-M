@@ -12,11 +12,10 @@ export const LAUNCHER_APPS = [
   {
     key: 'yourAcct',
     label: 'Your Account',
-    subtitle: 'Add products and licenses, and review subscription details.',
+    subtitle: 'Signed-in user details, preferences, and password reset.',
     color: '#8b969f',
     configureLicenses: true,
-    module: 'setup',
-    params: { section: 'account' },
+    module: 'userAccount',
   },
 ];
 

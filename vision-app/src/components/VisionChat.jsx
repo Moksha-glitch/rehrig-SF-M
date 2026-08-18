@@ -530,11 +530,11 @@ export default function VisionChat({ onOnboard, onClose }) {
             event.preventDefault();
             send(draft);
           }}
-          className="flex items-end gap-2 rounded-[28px] bg-[#f4f4f4] px-2.5 py-2 shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)]"
+          className="flex items-end gap-2 rounded-[28px] bg-elevated px-2.5 py-2 shadow-[0_0_0_1px_var(--color-line)]"
         >
           <button
             type="button"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white text-ink hover:bg-elevated"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-ink hover:bg-canvas"
             aria-label="Add"
             title="Add"
           >
@@ -566,7 +566,7 @@ export default function VisionChat({ onOnboard, onClose }) {
           <button
             type="submit"
             disabled={busy || !draft.trim()}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-white disabled:cursor-default disabled:bg-black/10 disabled:text-ink-faint"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-white disabled:cursor-default disabled:bg-line disabled:text-ink-faint"
             aria-label="Send message"
           >
             <Icon name="arrowUp" size={16} />

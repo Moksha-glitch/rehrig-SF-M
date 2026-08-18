@@ -17,7 +17,8 @@ import {
 } from '../data/rbac.js';
 import { readNavigation, writeNavigation } from '../utils/appNavigation.js';
 import { useAuth } from './authContextBase.js';
-import { appRepository, THEME_KEY } from '../utils/appRepository.js';
+import { appRepository, preferences } from '../utils/appRepository.js';
+import { applyResolvedTheme, normalizeTheme, subscribeSystemTheme } from '../utils/theme.js';
 import { apiClient } from '../lib/apiClient.js';
 import { AppStoreContext } from './storeContext.js';
 
@@ -25,16 +26,8 @@ function homeModuleFor() {
   return 'home';
 }
 
-function readTheme() {
-  try {
-    return window.localStorage.getItem(THEME_KEY) || 'light';
-  } catch {
-    return 'light';
-  }
-}
-
 const initialUi = {
-  theme: typeof window !== 'undefined' ? readTheme() : 'light',
+  theme: typeof window !== 'undefined' ? preferences.getTheme() : 'light',
   nav: typeof window !== 'undefined' ? readNavigation() : { module: 'home', params: {} },
   toast: null,
   assistantOpen: false,
@@ -46,7 +39,7 @@ const initialUi = {
 function reducer(state, action) {
   switch (action.type) {
     case 'SET_THEME':
-      return { ...state, theme: action.theme };
+      return { ...state, theme: normalizeTheme(action.theme) };
     case 'NAVIGATE':
       return { ...state, nav: { module: action.module, params: action.params || {} } };
     case 'TOAST':
@@ -71,12 +64,9 @@ export function ApiAppStoreProvider({ children }) {
   const didRouteOnLogin = useRef(false);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = ui.theme;
-    try {
-      window.localStorage.setItem(THEME_KEY, ui.theme);
-    } catch {
-      /* ignore */
-    }
+    applyResolvedTheme(ui.theme);
+    preferences.setTheme(ui.theme);
+    return subscribeSystemTheme(ui.theme, () => applyResolvedTheme(ui.theme));
   }, [ui.theme]);
 
   useEffect(() => {
