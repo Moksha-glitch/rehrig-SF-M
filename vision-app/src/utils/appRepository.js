@@ -19,7 +19,7 @@ import {
   DEFAULT_WORKSPACE_SETTINGS,
   SEED_APP_LICENSES,
   SEED_REPORT_SUBSCRIPTIONS,
-} from '../data/appLauncher.js';
+} from '../data/workspaceConfig.js';
 import { SEED_REPORT_SPECS } from '../data/reportStudio.js';
 
 export const STORAGE_VERSION = 1;

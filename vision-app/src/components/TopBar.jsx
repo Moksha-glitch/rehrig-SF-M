@@ -1,3 +1,7 @@
+/**
+ * Shell chrome that is not a Salesforce-style top bar:
+ * desktop = persona-preview banner only; small screens = hamburger nav.
+ */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
 import UserAccountMenu from './UserAccountMenu.jsx';

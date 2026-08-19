@@ -1,6 +1,6 @@
 /**
  * Shared persona-aware AI assistant content and intent matching.
- * Used by HomeAssistant (inline) and GlobalAssistant (shell drawer).
+ * Used by VisionChat (sidebar companion).
  */
 
 export const PERSONA_CONTENT = {
@@ -67,9 +67,21 @@ export const PERSONA_CONTENT = {
           'The Service Provider Registry shows all active and inactive providers, their contacts, and account details.',
         action: { label: 'View providers', module: 'accounts' },
       },
+      {
+        terms: ['qalert', 'sarasota'],
+        reply:
+          'QAlert lists citizen requests synced for Sarasota County and the last successful pull.',
+        action: { label: 'Open QAlert', module: 'qalert' },
+      },
+      {
+        terms: ['holiday', 'login history', 'audit'],
+        reply:
+          'Holiday schedule and Login History live under Configure for Rehrig administrators.',
+        action: { label: 'Open holiday schedule', module: 'holidays' },
+      },
     ],
     fallback:
-      'I can help with service providers, onboarding, contacts, contracts, and Workspace configuration. Try one of the suggested prompts.',
+      'I can help with service providers, onboarding, contacts, contracts, QAlert, holidays, and Workspace. Try one of the suggested prompts.',
   },
   sp: {
     eyebrow: 'Operations AI',
@@ -140,9 +152,21 @@ export const PERSONA_CONTENT = {
           'Analytics contains operational reports and dashboards for trends, service levels, and performance.',
         action: { label: 'Open analytics', module: 'analytics', params: { view: 'dashboards' } },
       },
+      {
+        terms: ['woit', 'bulk import', 'import'],
+        reply:
+          'WOIT Import uploads a CSV to create or close work orders for this service provider.',
+        action: { label: 'Open WOIT Import', module: 'bulkImport' },
+      },
+      {
+        terms: ['chatter', 'approval', 'sharing', 'insight'],
+        reply:
+          'Collaboration has Chatter, Record Sharing, and Customer Insights. Approvals sit under Operations.',
+        action: { label: 'Open Chatter', module: 'chatter' },
+      },
     ],
     fallback:
-      'I can help with work orders, dispatches, routes, trucks, maps, and analytics. Try one of the suggested prompts.',
+      'I can help with work orders, dispatches, routes, trucks, maps, WOIT, Chatter, and analytics. Try one of the suggested prompts.',
   },
   customer: {
     eyebrow: 'Service AI',
@@ -257,20 +281,6 @@ export function resolveIntent(content, prompt) {
       action: null,
     }
   );
-}
-
-/**
- * Persona/RBAC-aware Contacts destination for the top bar.
- * Returns null when the user may not open contacts.
- */
-export function getContactsDestination({ persona, canAccessModule, canTab }) {
-  if (persona === 'rehrig' && canAccessModule?.('contacts')) {
-    return { module: 'contacts', params: {}, label: 'Contacts' };
-  }
-  if (persona === 'sp' && canTab?.('contacts')) {
-    return { module: 'account', params: { tab: 'contacts' }, label: 'Contacts' };
-  }
-  return null;
 }
 
 /** Run a shared assistant action (navigate or onboard handler). */

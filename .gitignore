@@ -1,6 +1,7 @@
-# This repository tracks only vision-app/ (+ Vercel config)
+# This repository tracks vision-app/ plus Vercel config and the root README
 /*
 !/.gitignore
+!/README.md
 !/vercel.json
 !/vision-app/
 !/vision-app/**

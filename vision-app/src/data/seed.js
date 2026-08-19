@@ -1,4 +1,4 @@
-// Seed fixtures for Vision 2.0 (Spec Ch.1, Ch.12, Ch.21, Ch.23).
+// Seed fixtures for Vision Pulse (Spec Ch.1, Ch.12, Ch.21, Ch.23).
 
 // ---- Seed users across the three personas (Ch.1) ----
 export const USERS = [

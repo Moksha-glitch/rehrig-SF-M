@@ -29,7 +29,7 @@ export const ROLE_NAV_KEYS = {
   // SP Admin — full operator surface
   'sp:Admin': null,
 
-  // Ops Manager / Back-Office — ops data, no Segments / MRP / Request-Type config / Bulk Import
+  // Ops Manager / Back-Office — ops data, no Segments / MRP / Request-Type config / WOIT
   'sp:Ops Manager': [
     'assistant',
     'home',

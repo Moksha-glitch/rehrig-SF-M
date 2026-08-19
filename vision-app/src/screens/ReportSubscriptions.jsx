@@ -29,7 +29,7 @@ import {
   SUBSCRIPTION_FORMATS,
   SUBSCRIPTION_FREQUENCIES,
   SUBSCRIPTION_WEEKDAYS,
-} from '../data/appLauncher.js';
+} from '../data/workspaceConfig.js';
 
 const DAY_INDEX = {
   Sunday: 0,

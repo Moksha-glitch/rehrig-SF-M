@@ -3,6 +3,9 @@
   "private": true,
   "version": "1.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=18.18.0"
+  },
   "scripts": {
     "dev": "vite --mode demo --port 5173",
     "dev:demo": "vite --mode demo --port 5173",
@@ -10,6 +13,7 @@
     "build": "vite build --mode demo",
     "build:demo": "vite build --mode demo",
     "build:api": "vite build --mode api",
+    "check": "vite build --mode demo && vite build --mode api",
     "preview": "vite preview",
     "preview:demo": "vite preview --mode demo --port 5173",
     "preview:api": "vite preview --mode api --port 5174"

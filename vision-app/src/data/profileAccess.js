@@ -113,7 +113,7 @@ export const PROFILE_SCREEN_MODULES = [
       'Home — SP Admin View',
       'Home — SP Segment Admin View',
       'Customize Home (slide-over)',
-      'App Launcher',
+      'Vision AI',
     ],
   },
   {
